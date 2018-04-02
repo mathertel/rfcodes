@@ -1,6 +1,6 @@
-See http://www.mathertel.de/License.aspx
+# Software License Agreement (BSD License)
 
-Software License Agreement (BSD License)
+See http://www.mathertel.de/License.aspx
 
 Copyright (c) 2005-2014 by Matthias Hertel,  http://www.mathertel.de/
 
