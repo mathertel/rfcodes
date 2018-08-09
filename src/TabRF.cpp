@@ -16,20 +16,42 @@ void TabRFClass::attachCallback(TabRFCallbackFunction newFunction)
   _callbackFunc = newFunction;
 } // attachCallback()
 
+// bit 0      : s = start
+// bit 1..26  : unique ID of the transmitter device
+// bit 27     : group flag, if set, all reivers with the same id must act
+// bit 28     : 0= OFF, 1=ON, D=dimming
+// bit 29..32 : unit number
+// bit 33..36 : dim level
+// x
 
-void TabRFClass::send(char *code)
+// <v:len:0:1>
+// $v:4:0:1
+
+// s<id:26>GV<unit:4><level:4>x    
+// s**************************GV####x
+// s_##___#____#_#__###_____#__#____x    on
+// s_##___#____#_#__###_____#_______x    off
+// s_##___#____#_#__###_____#__D__##_#__x
+
+// http://rfdevice/$board/rfsend/i1?value=0
+// http://rfdevice/$board/rfsend/i1?value=1
+
+void TabRFClass::send(const char *signal, int value)
 {
+  String fullSignal = signal;
+
   Code *thisCode;
   int level = LOW;
 
-  if (_sequence) {
-    detachInterrupt(_irq);
+  if ((_sendPin >= 0) && (_sequence)) {
+    if (_recvPin >= 0)
+      detachInterrupt(_irq);
 
     int8_t repeat = _sequence->sendRepeat;
     while (repeat > 0) {
       repeat--;
 
-      char *c = code;
+      const char *c = signal;
       while (*c) {
         // search the code in the table
         for (int8_t n = 0; n < _sequence->length; n++) {
@@ -48,7 +70,8 @@ void TabRFClass::send(char *code)
 
     // reset current protocol and enable receiving again.
     _resetCode(true);
-    attachInterrupt(_irq, signal_change_handler, CHANGE);
+    if (_recvPin >= 0)
+      attachInterrupt(_irq, signal_change_handler, CHANGE);
   } // if
 } // send()
 
@@ -62,16 +85,21 @@ void TabRFClass::init(int recvPin, int sendPin)
   // See
   // https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
   _recvPin = recvPin;
-  _irq = digitalPinToInterrupt(recvPin); // will return -1 on wrong pin number.
-  if (_irq >= 0) {
-    pinMode(_recvPin, INPUT);
-    _resetCode(true);
-    attachInterrupt(_irq, signal_change_handler, CHANGE);
-  } // if
+  if (recvPin >= 0) {
+    _irq =
+        digitalPinToInterrupt(recvPin); // will return -1 on wrong pin number.
+    if (_irq >= 0) {
+      pinMode(_recvPin, INPUT);
+      _resetCode(true);
+      attachInterrupt(_irq, signal_change_handler, CHANGE);
+    } // if
+  }
 
-  // initialize sending mode
   _sendPin = sendPin;
-  pinMode(_sendPin, OUTPUT);
+  if (sendPin >= 0) {
+    // initialize sending mode
+    pinMode(_sendPin, OUTPUT);
+  }
 } // init()
 
 

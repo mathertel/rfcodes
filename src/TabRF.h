@@ -2,8 +2,16 @@
  * @file: TabRF.h
  * @brief
  * This sample is part of the TabRF library that implements receiving an sending
- * RF protocols defined in a table. The library internals are explained at
- * http://www.mathertel.de/Arduino/tabrflibrary.aspx
+ * RF protocols defined in a table.
+ * 
+ * This work is licensed under a BSD style license,
+ * https://www.mathertel.de/License.aspx.
+ *
+ * More information on http://www.mathertel.de/Arduino/tabrflibrary.aspx
+ *
+ * Changelog:
+ * * 29.04.2018 created by Matthias Hertel
+ * * 06.08.2018 const char send, allow for sending only.
  */
 
 #ifndef TabRF_H
@@ -19,6 +27,8 @@
 #ifndef ICACHE_RAM_ATTR
 #define ICACHE_RAM_ATTR
 #endif
+
+#define NO_PIN (-1)
 
 /**
  * Code types
@@ -91,7 +101,7 @@ public:
   void attachCallback(TabRFCallbackFunction newFunction);
 
   // send out a new code
-  void send(char *code);
+  void send(const char *code, int value = 0);
 
   // ===== debug helper functions =====
 

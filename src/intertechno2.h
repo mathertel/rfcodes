@@ -5,19 +5,19 @@
 #define IT2_LEN 275
 
 Code Intertechno2a_Codes[] = {
-    // starting sequence is /‾\__________/
+    // starting sequence is /‾\___________________/
     {TabRF_CODE_START, 's', 2, {IT2_LEN, 10 * IT2_LEN}},
 
-    // low signal is /‾\_/‾\_____/
+    // low signal is  /‾\_/‾\_________/
     {TabRF_CODE_ANY, '_', 4, {IT2_LEN, IT2_LEN, IT2_LEN, 5 * IT2_LEN}},
 
-    // high signal is /‾\_____/‾\_/
+    // high signal is /‾\_________/‾\_/
     {TabRF_CODE_ANY, '#', 4, {IT2_LEN, 5 * IT2_LEN, IT2_LEN, IT2_LEN}},
 
     // DIM signal is /‾\_/‾\_/  (shorter !)
     {TabRF_CODE_ANY, 'D', 4, {IT2_LEN, IT2_LEN, IT2_LEN, IT2_LEN}},
 
-    // end signal is /‾\_/‾\______40 times____/  (longer !)
+    // end signal is /‾\_______40 times______________________...__/  (longer !)
     {TabRF_CODE_END, 'x', 2, {IT2_LEN, 10728}}
 };
 
