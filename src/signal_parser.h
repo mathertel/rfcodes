@@ -441,31 +441,31 @@ public:
   } // compose()
 
 
-  /** Send a summary of the current code-table to the Serial output. */
+  /** Send a summary of the current code-table to the output. */
   void dumpTable()
   {
     Protocol *p = _protocol;
     int pCnt = _protocolCount;
     while (p && pCnt) {
       // dump the Protocol characteristics
-      INFO_MSG("Protocol %2d '%s', min:%d max:%d tol:%02u rep:%d", p->id, p->name, p->minCodeLen, p->maxCodeLen, p->tolerance, p->sendRepeat);
+      RAW_MSG("Protocol %2d '%s', min:%d max:%d tol:%02u rep:%d\n", p->id, p->name, p->minCodeLen, p->maxCodeLen, p->tolerance, p->sendRepeat);
 
       Code *c = _code;
       int cnt = _codeCount;
       while (c && cnt) {
         if (p->id == c->protId) {
-          fprintf(stderr, "  '%c' |", c->name);
+          RAW_MSG("  '%c' |", c->name);
 
           for (int n = 0; n < c->length; n++) {
-            fprintf(stderr, "%5d -%5d |", c->minTime[n], c->maxTime[n]);
+            RAW_MSG("%5d -%5d |", c->minTime[n], c->maxTime[n]);
           } // for
-          fprintf(stderr, "\n");
+          RAW_MSG("\n");
         } // if
 
         c++;
         cnt--;
       } // while
-      fprintf(stderr, "\n");
+      RAW_MSG("\n");
 
       p++;
       pCnt--;

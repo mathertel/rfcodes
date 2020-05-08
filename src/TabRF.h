@@ -17,9 +17,6 @@
 #ifndef TabRF_H
 #define TabRF_H
 
-// define RAWTIMES with the maximum of captured raw timing codes
-#define RAWTIMES 500
-
 #include <Arduino.h>
 
 #include "debugout.h"
@@ -37,11 +34,6 @@
 
 #define TabRF_ERR(...) Serial.printf("Error: " __VA_ARGS__)
 
-#if defined(RAWTIMES)
-extern uint32_t probes[RAWTIMES];
-extern uint32_t probesCount;
-#endif
-
 // main class for the TabRF library
 class TabRFClass {
  public:
@@ -58,11 +50,26 @@ class TabRFClass {
 
   void loop();
 
-  uint32_t getBufferCount(){return (buf88_cnt);};
+  uint32_t getBufferCount() { return (buf88_cnt); };
 
-#ifdef RAWTIMES
-  void dumpRawTimes();
-#endif
+  // get last received timings
+  void getBufferData(uint32_t *buffer, int len) {
+    len--; // keep space for final '0';
+    if (len > buf88_size) len = buf88_size;
+
+    uint32_t *p = buf88_read - len;
+    if (p < buf88) p += buf88_size;
+
+    if (len) {
+      *buffer++ = *p++;
+
+      // reset pointer to the start when reaching end
+      if (p == TabRFClass::buf88_end)
+        p = TabRFClass::buf88;
+      len--;
+    }  // if
+    *buffer = 0;
+  };
 
  private:
 #define buf88_size 256
@@ -82,12 +89,6 @@ class TabRFClass {
 
   // ===== debug helper functions =====
 
-#ifdef RAWTIMES
-  /** received codes */
-  uint32_t raw[RAWTIMES];
-  uint32_t rawCount;
-#endif
-
   // This handler is attached to the change interrupt.
   static void ICACHE_RAM_ATTR signal_change_handler() {
     // last time the interrupt was called.
@@ -106,7 +107,7 @@ class TabRFClass {
     }  // if
 
     lastTime = now;  // micros();
-  }  // signal_change_handler()
+  }                  // signal_change_handler()
 
 };  // class TabRFClass
 
