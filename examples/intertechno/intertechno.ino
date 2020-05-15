@@ -1,21 +1,12 @@
 /*
   file: intertechno2.ino
   This sample is part of the TabRF library showing how to receive and send
-  intertechno2 compatible codes. The library internals are explained at
+  intertechno2 compatible codes.
+  
+  This example shows that 2 different protocols can be decoded with the same receiver
+  by registering 2 protocols used by the intertechno devices.
+
   http://www.mathertel.de/Arduino/TabRFlibrary.aspx
-
-  This is a sketch that listens to RF Signals and sends decoded protocols to the
-  Serial output.
-
-  Setup a test circuit:
-
-  Connect the data pin of the receiver with
-  * Arduino UNO pin #2
-  * ESP8266 pin D1
-  Connect the data pin of the sender with
-  * Arduino UNO pin #9
-  * ESP8266 pin D4
-  or adjust the pins in the parameters when calling the tabRF.init() function.
 
   Use the Serial Monitor to see the received codes and send the predefined
   codes.
@@ -24,138 +15,190 @@
   29.03.2018 converted to library
 */
 
+#include <Arduino.h>
 #include <TabRF.h>
-#include <intertechno2.h>
+#include <cresta.h>
+#include <intertechno.h>
+#include <sc5272_protocol.h>
+#include <signal_parser.h>
 
-char lastCode[MAXCODES]; // last received protocol
-boolean lastCodeReceived = false;
 
-// decoded parts of the protocol in numbers
-unsigned long lastID = 0;
-unsigned int lastUnit = 0;
-unsigned int lastDim = 0;
+bool showRaw = false;
+
+SignalParser sig;
+TabRFClass tabRF;
+
+// ===== Cresta protocol decoding =====
+
+// This function can be used to decode the Cresta Manchester protocol.
+// See cresta.h for further details.
+
+void cresta_decode(const char *p)
+{
+  uint8_t cresta_data[10]; // our device emits 10+2 data bytes, we only read the 10 and ignore the checksum
+  int cresta_cnt = 0; // number of received bytes
+
+  uint8_t cresta_byte = 0; // currenty byte value fom the stream
+  uint8_t cresta_bits = 0; // next bit to receive. 0..7, 8 is the 0-bit used inbetween data baytes
+
+  // simulate shifting in bits from header : 10101
+  cresta_byte = 0x15;
+  cresta_bits = 5;
+  bool bit = 1; // last bit was HIGH
+
+  while (*p) {
+    if (*p == 'l') {
+      bit = 1 - bit;
+    }
+    p++;
+
+    if (cresta_bits < 8) {
+      // shift bit into data byte
+      cresta_byte |= bit << cresta_bits;
+      cresta_bits++;
+    } else {
+      // shift completed byte into buffer
+      // bit must be 0, not verified
+      cresta_byte = cresta_byte ^ (cresta_byte << 1); // decode
+      cresta_data[cresta_cnt++] = cresta_byte;
+      // reset for next byte
+      cresta_bits = 0;
+      cresta_byte = 0;
+    }
+  } // while
+
+  // print received data
+  Serial.print("data:");
+  for (int i = 0; i < 7; i++) {
+    Serial.printf("%02x ", cresta_data[i]);
+  } // for
+  Serial.println();
+
+  if (cresta_data[0] != 0x9f) {
+    Serial.println("Bad data.");
+  } else {
+    // temperature
+    int temp = 100 * (cresta_data[5] & 0x0f) + 10 * (cresta_data[4] >> 4) + (cresta_data[4] & 0x0f);
+    Serial.printf("  temp: %d.%d °C\n", temp / 10, temp % 10);
+
+    // humidity
+    int hum = 10 * (cresta_data[6] >> 4) + (cresta_data[6] & 0x0f);
+    Serial.printf("  hum : %d %%\n", hum);
+  }
+
+} // cresta_decode
+
 
 // This function will be called when a complete protcol was received.
 void receiveCode(char *proto)
 {
+  SignalParser::CodeTime lastProbes[152]; // dividable by 8 is preferred.
   // remember last code in a local variable
-  strncpy(lastCode, proto, sizeof(lastCode));
-  lastCodeReceived = true;
-} // receiveCode()
+  Serial.printf("[%s]\n", proto);
 
+  // analysing supporting callback
+  if (showRaw && (*proto == '*')) {
+    int n = atoi(proto + 1) + 1;
+    tabRF.getBufferData(lastProbes, min(n, 150));
+
+    // dump probes
+    SignalParser::CodeTime *p = lastProbes;
+    int len = 0;
+    while (len < 150 && *p) {
+      if (len % 8 == 0) {
+        Serial.printf("%3d: %5u,", len, *p);
+      } else if (len % 8 == 7) {
+        Serial.printf(" %5u,\n", *p);
+      } else {
+        Serial.printf(" %5u,", *p);
+      }
+      p++;
+      len++;
+    } // while
+    Serial.println();
+  } // if
+
+  if (strncmp(proto, "cw ", 3) == 0) {
+    cresta_decode(proto + 4);
+  }
+} // receiveCode()
 
 void setup()
 {
   Serial.begin(115200);
-  Serial.println();
   Serial.println("TabRF Packet Receiver");
+  delay(2000);
+  Serial.println();
 
   Serial.println(
-      "Commands: 1-9(Send Code) T(Dump Code Table) L(Decode last code)");
+      "Commands: 1-9(Send Code) T(Dump Code Table) R(aw toggle)");
 
   // initialize the tabRF library
-  tabRF.init(D1, D4); // input at pin #2 , output a pin # 9
-  tabRF.setupDefition(&Intertechno2_Sequence);
-  tabRF.attachCallback(receiveCode);
+  tabRF.init(&sig, D7, NO_PIN, 16); // input at pin D8 , output a pin D3
+
+  // register_intertechno1(sig);
+  // register_intertechno2(sig);
+  register_cresta(sig);
+  register_SC5272(sig, 95);
+
+  sig.dumpTable();
+  if (showRaw)
+    Serial.println("Raw mode is enabled");
+  else
+    Serial.println("Raw mode is disabled");
+
+  sig.attachCallback(receiveCode);
 } // setup()
 
-#define B1_on  "s_##___#____#_#__###_____#__#____x"
+
+#define C1 "it2 s_##___#____#_#__###_____#__#_#__x"
+#define C2 "it2 s_##___#____#_#__###_____#____#__x"
+
+#define B1_on "s_##___#____#_#__###_____#__#____x"
 #define B1_off "s_##___#____#_#__###_____#_______x"
 
-#define B4_on  "s_##___#____#_#__###_____#__#__##x"
+#define B4_on "s_##___#____#_#__###_____#__#__##x"
 #define B4_off "s_##___#____#_#__###_____#_____##x"
-#define B4_d   "s_##___#____#_#__###_____#__D__##_#__x"
+#define B4_d "s_##___#____#_#__###_____#__D__##_#__x"
+
+
+unsigned int maxBufCount = 0;
 
 void loop()
 {
+  unsigned long now = millis();
+  static unsigned long nextReport = now + 1000;
+
   if (Serial.available() > 0) {
     char cmd = Serial.read();
     if (cmd == '1') {
-      Serial.println("Sending (1)...");
-      tabRF.send(B4_on);
+      Serial.println("Sending (C1)...");
+      tabRF.send(C1);
 
     } else if (cmd == '2') {
-      Serial.println("Sending (2)...");
-      tabRF.send(B4_off);
-
-    } else if (cmd == '5') {
-      Serial.println("Sending (5)...");
-      tabRF.send("s_##___#____#_#__###_____#__D__##_#__x");
+      Serial.println("Sending (C2)...");
+      tabRF.send(C2);
 
     } else if (cmd == 'T') {
-      tabRF.dumpTable();
+      sig.dumpTable();
+      if (showRaw)
+        Serial.println("Raw mode is enabled");
+      else
+        Serial.println("Raw mode is disabled");
 
-    } else if (cmd == 'L') {
-      Serial.println("Last Code decoded:");
-      Serial.println(lastCode);
-
-      if (lastCode[28] == 'D') {
-        Serial.println("s<---   id             --->GD<un><di>x");
-      } else {
-        Serial.println("s<---   id             --->GL<un>x");
-      }
-
-      // bit 0      : start
-      // bit 1..26  : unique ID of the transmitter device
-      // bit 27     : group flag, if set, all reivers with the same id must act
-      // bit 28     : 0= OFF, 1=ON, D=dimming
-      // bit 29..32 : unit number
-      // bit 33..36 : dim level
-      // x
-
-      // decode the id to a number:
-      lastID = 0;
-      for (int n = 1; n <= 26; n++) {
-        lastID = lastID << 1;
-        if (lastCode[n] == '#')
-          lastID += 1;
-      } // for
-      Serial.print("id:    ");
-      Serial.println(lastID, DEC);
-
-      // Decode the group flag.
-      if (lastCode[27] == '#') {
-        Serial.println("group: Group flag is on all devices must act.");
-      } else {
-        Serial.println("group: No Group flag set.");
-      }
-
-      // Decode the Level flag.
-      if (lastCode[28] == '#') {
-        Serial.println("level: Switch Device on.");
-      } else if (lastCode[28] == '_') {
-        Serial.println("level: Switch Device off.");
-      } else if (lastCode[28] == 'D') {
-        Serial.println("level: Dim the Device.");
-      } // if
-
-      // Decode the unit number.
-      lastUnit = 0;
-      for (int n = 29; n <= 32; n++) {
-        lastUnit = lastUnit << 1;
-        if (lastCode[n] == '#')
-          lastUnit += 1;
-      }
-      Serial.print("unit:  ");
-      Serial.println(lastUnit, DEC);
-
-      lastDim = 0;
-      Serial.print("dim:   ");
-      Serial.println(lastDim, DEC);
-
-      //       <---   id             --->GS<un><di>
-      // 34: [s_#_###__#_#__#_##_#_###_#_x_#__#_x] on
+    } else if (cmd == 'R') {
+      showRaw = !showRaw;
 
     } // if
   } // if
 
-  if (lastCodeReceived) {
-    // a new code was received
-    Serial.print('[');
-    Serial.write(lastCode);
-    Serial.println(']');
-    lastCodeReceived = false;
-  } // if
+  SignalParser::CodeTime bufcnt = tabRF.getBufferCount();
+  if ((now > nextReport) && (bufcnt > 40)) {
+    Serial.print("buf_cnt:");
+    Serial.println(bufcnt);
+    nextReport = now + 1000;
+  }
 
-  delay(5);
+  // process received bytes
+  tabRF.loop();
 } // loop()
