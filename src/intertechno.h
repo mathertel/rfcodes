@@ -14,17 +14,18 @@
 /** register the "older" intertechno protocol */
 void register_intertechno1(SignalParser &sig) {
   // this protocol has a fixed length of 12 codes
-  uint32_t b = 380;
   uint8_t prot = sig.newProtocol("it1", 1 + 12, 1 + 12, 20);
 
+  uint32_t t = 380; // 95*4
+
   // starting sequence is /‾\___(long)_______/
-  sig.newCode(prot, 'B', SP_START, b, 31 * b);
+  sig.newCode(prot, 'B', SP_START, t, 31 * t);
 
   // low signal is /‾\___/‾‾‾\_/
-  sig.newCode(prot, '0', SP_DATA, b, 3 * b, 3 * b, b);
+  sig.newCode(prot, '0', SP_DATA, t, 3 * t, 3 * t, t);
 
   // high signal is /‾\___/‾\___/
-  sig.newCode(prot, '1', SP_DATA, b, 3 * b, b, 3 * b);
+  sig.newCode(prot, '1', SP_DATA, t, 3 * t, t, 3 * t);
 }  // register_intertechno1()
 
 
@@ -32,9 +33,7 @@ void register_intertechno1(SignalParser &sig) {
 /** register the "newer" intertechno protocol */
 void register_intertechno2(SignalParser &sig) {
   uint32_t a = 280;
-  // examples:
-  // [it2 s_##__##__#__####____##__#_______x]
-  // [it2 s_##__##__#__####____##__#______#x]
+
   uint8_t prot = sig.newProtocol("it2", 34, 48, 25, 10);
 
   // starting sequence is /‾\__________/
