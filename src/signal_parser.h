@@ -1,11 +1,11 @@
 // signal_parser.h
 
-// This signal parser recognizes patterns in timing code sequences that are defined in a table.
+// This signal parser recognizes patterns in timing code sequences that are
+// defined in a table.
 
 // * Define the pattern using newProtocol and newCode.
 // * Register a callback function using attachCallback
 // * Pass timing code values into the parse function.
-
 
 #ifndef SIGNAL_PARSER_H_
 #define SIGNAL_PARSER_H_
@@ -19,31 +19,26 @@
 #define NUL '\0'
 
 #define MAX_CODELENGTH 8 // maximal length of a code definition
-#define MAX_SEQUENCE_LENGTH 64 // maximal length of a code sequence
+#define MAX_SEQUENCE_LENGTH 120 // maximal length of a code sequence
+#define MAX_TIMING_LENGTH (MAX_CODELENGTH * MAX_SEQUENCE_LENGTH) // maximal number of timings in a sequence
 
+#define PROTNAME_LEN 12 // maximal protocol name len including ending '\0'
 
 #define SP_START 0x01 // A valid start code type.
 #define SP_DATA 0x02 // A code containing some information
 #define SP_END 0x04 // This code ends a sequence
 #define SP_ANY (SP_DATA | SP_END) // A code can follow starting codes
 
-
 class SignalParser
 {
-
 public:
-  // /**
-  //  * Code types
-  //  * flags that specify the allowed usage of a code
-  //  */
-  // enum class CodeType {
-  //   ANY = 0x10, // A valid code type.
-  //   START = 0x01, // This code can start a sequence
-  //   END = 0x02 // This code can end a sequence
-  // };
+  // ===== Type definitions =====
 
+  // timings are using CodeTime datatypes meaning µsecs.
+  typedef uint16_t CodeTime;
+
+  // use-cases of a defined code (start,data,end).
   typedef int CodeType;
-
 
   // The Code structure is used to hold the definition of the protocol,
   // the timings and the current state information while receiving the code.
@@ -54,15 +49,15 @@ public:
     char name; // single character name for this code used for the message
         // string.
     uint8_t length; // number of timings for this code
-    uint32_t minTime[MAX_CODELENGTH]; // average time of the code part.
-    uint32_t maxTime[MAX_CODELENGTH]; // average time of the code part.
+    CodeTime minTime[MAX_CODELENGTH]; // average time of the code part.
+    CodeTime maxTime[MAX_CODELENGTH]; // average time of the code part.
 
     // these fields reflect the current status of the code.
     uint8_t cnt; // number of discovered timings.
     uint8_t valid; // is true while discovering and the code is still possible.
-
   }; // struct Code
 
+  struct Protocol; // forward declaration
 
   // Protocol definition
   struct Protocol {
@@ -70,7 +65,7 @@ public:
     uint8_t id;
 
     /** name of the protocol */
-    char name[12];
+    char name[PROTNAME_LEN];
 
     // minimal number of codes in a row required by the protocol
     uint8_t minCodeLen;
@@ -88,11 +83,17 @@ public:
     uint8_t length;
   }; // struct Protocol
 
+
   typedef void (*CallbackFunction)(char *code);
+
+
+  // ===== Functions =====
 
 
 private:
   // ===== class variables =====
+
+  bool _debugMode = false;
 
   /** Protocol table and related settings */
   Protocol *_protocol;
@@ -102,11 +103,12 @@ private:
   Code *_code;
   int _codeCount = 0;
 
-
   // Parser variables
 
   char _seq[MAX_SEQUENCE_LENGTH]; // Sequence of received codes
   uint8_t _seq_length; // length of current recorded code sequence
+  uint8_t _seq_codelength; // number of received timings while collecting the
+      // sequence
   Protocol *_seq_protocol; // detected protocol
 
   CallbackFunction _callbackFunc;
@@ -128,7 +130,6 @@ private:
     return (cnt ? p : nullptr);
   } // _findProt()
 
-
   /** find protocol by name */
   Protocol *_findProt(char *name)
   {
@@ -136,13 +137,13 @@ private:
     int cnt = _protocolCount;
 
     while (cnt > 0) {
-      if (strcmp(name, p->name) == 0) break;
+      if (strcmp(name, p->name) == 0)
+        break;
       p++;
       cnt--;
     }
     return (cnt ? p : nullptr);
   } // _findProt()
-
 
   /** find protocol by name */
   Code *_findCode(uint8_t protId, char codeName)
@@ -151,13 +152,13 @@ private:
     int cnt = _codeCount;
 
     while (c && cnt > 0) {
-      if (c->protId == protId && c->name == codeName) break;
+      if (c->protId == protId && c->name == codeName)
+        break;
       c++;
       cnt--;
     }
     return (cnt ? c : nullptr);
   } // _findCode()
-
 
   /**
    * Reset all counters in the code-table to start next matching
@@ -178,22 +179,28 @@ private:
       TRACE_MSG("--reset--all-");
       _seq_protocol = nullptr;
       _seq_length = 0;
+      _seq_codelength = 0;
       _seq[0] = NUL;
     } else {
       TRACE_MSG("--reset");
     } // if
   } // _resetCode()
 
-
   // ===== public functions =====
 
 public:
+  /** By defining debugMode=true some more callbacks are created starting with '*'. */
+  void init(bool debugMode = false)
+  {
+    _debugMode = debugMode;
+  } // init
+
+
   /** attach a callback function that will get passed any new code. */
   void attachCallback(CallbackFunction newFunction)
   {
     _callbackFunc = newFunction;
   } // attachCallback()
-
 
   /**
    * @brief Register a new protocol.
@@ -201,31 +208,40 @@ public:
    * @param minLen the minimal length of a valid code sequence.
    * @param maxLen the maximal length of a valid code sequence.
    * @param tolerance the tolerance in percent for timings to be recognized.
-   * @param repeat the number of sequences to be sent in a row. 
+   * @param repeat the number of sequences to be sent in a row.
+   * @return protocol id-number or 0
    */
-  uint8_t newProtocol(char *name, uint8_t minLen, uint8_t maxLen, uint8_t tolerance = 25, uint8_t repeat = 3)
+  uint8_t newProtocol(char *name, uint8_t minLen, uint8_t maxLen,
+                      uint8_t tolerance = 25, uint8_t repeat = 3)
   {
     TRACE_MSG("new protocol %s", name);
 
-    // get space for protocol definition
-    _protocolCount += 1;
-    _protocol = (Protocol *)realloc(_protocol, _protocolCount * sizeof(struct Protocol));
+    // some rules to verify the input
+    if ((minLen > maxLen) || (maxLen >= MAX_SEQUENCE_LENGTH)) {
+      return (0);
 
-    // fill last one.
-    Protocol *p = &_protocol[_protocolCount - 1];
-    p->id = _protocolCount;
-    strncpy(p->name, name, sizeof(p->name));
-    p->name[sizeof(p->name) - 1] = NUL;
-    p->minCodeLen = minLen;
-    p->maxCodeLen = maxLen;
-    p->tolerance = tolerance;
-    p->sendRepeat = repeat;
-    p->length = 0;
-    return (_protocolCount);
+    } else {
+      // get space for protocol definition
+      _protocolCount += 1;
+      _protocol = (Protocol *)realloc(_protocol,
+                                      _protocolCount * sizeof(struct Protocol));
+
+      // fill last one.
+      Protocol *p = &_protocol[_protocolCount - 1];
+      p->id = _protocolCount;
+      strncpy(p->name, name, sizeof(p->name));
+      p->name[sizeof(p->name) - 1] = NUL;
+      p->minCodeLen = minLen;
+      p->maxCodeLen = maxLen;
+      p->tolerance = tolerance;
+      p->sendRepeat = repeat;
+      p->length = 0;
+      return (_protocolCount);
+    }
   } // newProtocol
 
-
-  void newCode(uint8_t protId, char ch, CodeType type, uint32_t t1, uint32_t t2, uint32_t t3 = 0, uint32_t t4 = 0)
+  void newCode(uint8_t protId, char ch, CodeType type, CodeTime t1, CodeTime t2 = 0,
+               CodeTime t3 = 0, CodeTime t4 = 0, CodeTime t5 = 0, CodeTime t6 = 0, CodeTime t7 = 0, CodeTime t8 = 0)
   {
     TRACE_MSG("new code %c", ch);
 
@@ -249,38 +265,50 @@ public:
       c->cnt = 0;
       c->valid = true;
 
-      if (t1 > 0) {
-        c->minTime[l++] = t1;
-      }
+      if (t1 > 0) c->minTime[l++] = t1;
+      if (t2 > 0) c->minTime[l++] = t2;
+      if (t3 > 0) c->minTime[l++] = t3;
+      if (t4 > 0) c->minTime[l++] = t4;
+      if (t5 > 0) c->minTime[l++] = t5;
+      if (t6 > 0) c->minTime[l++] = t6;
+      if (t7 > 0) c->minTime[l++] = t7;
+      if (t8 > 0) c->minTime[l++] = t8;
 
-      if (t2 > 0) {
-        c->minTime[l++] = t2;
-      }
-
-      if (t3 > 0) {
-        c->minTime[l++] = t3;
-      }
-
-      if (t4 > 0) {
-        c->minTime[l++] = t4;
-      }
       c->length = l;
 
       // calc min and max
       for (int i = 0; i < l; i++) {
-        uint32_t t = c->minTime[i];
+        CodeTime t = c->minTime[i];
         radius = (t * p->tolerance) / 100;
         c->minTime[i] = t - radius;
         c->maxTime[i] = t + radius;
       } // for
     } // if
-
   } // newCode
 
 
+  void strcpyProtname(char *target, const char *signal)
+  {
+    char *p = target;
+    char *s = (char *)signal;
+    int len = PROTNAME_LEN - 1;
+    while (len && *s && (*s != ' ')) {
+      *p++ = *s++;
+      len--;
+    }
+    *p = NUL;
+  } // strcpyProtname
+
+  // return the number of send repeats that should occure.
+  int getSendRepeat(char *name)
+  {
+    Protocol *p = _findProt(name);
+    return (p ? p->sendRepeat : 0);
+  }
+
   // check for a timing with the given duration fits into a code.
   // and when a code is complete, check for protocol conditions start end end.
-  void parse(uint32_t *durations)
+  void parse(CodeTime *durations)
   {
     while (*durations) {
       if (*durations == 305) {
@@ -292,7 +320,7 @@ public:
   }
 
   // return true when duration was aborting finding a start code.
-  void parse(uint32_t duration)
+  void parse(CodeTime duration)
   {
     Code *foundCode = nullptr; // a completed code sequence
     bool match = false;
@@ -310,21 +338,33 @@ public:
         if (c->valid) {
           // check if timing fits into this code
           int8_t i = c->cnt;
+          CodeType type = c->type;
+          bool valid = false; // until found a good condition
 
+          // 1. check conditions
           if ((_seq_length == 0) && !(c->type & SP_START)) {
-            // codes other than start codes are nor acceptable as a first code in the sequence.
+            // codes other than start codes are nor acceptable as a first code
+            // in the sequence.
             TRACE_MSG("check: %c: n/s", c->name);
-            c->valid = false;
+            valid = false;
+
+          } else if ((_seq_length > 0) && (c->protId != _seq_protocol->id)) {
+            // codes from other protocol are nor acceptable during receiving.
+            TRACE_MSG("check: %c: n/a", c->name);
 
           } else if ((_seq_length > 0) && !(c->type & SP_ANY)) {
-            // codes other than data and end codes are nor acceptable during receiving.
+            // codes other than data and end codes are nor acceptable during
+            // receiving.
             TRACE_MSG("check: %c: n/a", c->name);
-            c->valid = false;
+
+          } else if ((c->type & SP_END) && (i == c->length - 1) &&
+                     (duration > c->minTime[i])) {
+            TRACE_MSG("check: %c: end fits", c->name);
+            valid = true; // this code matches
 
           } else if ((duration < c->minTime[i]) || (duration > c->maxTime[i])) {
-            // This code sequence is not matching
+            // This timing is not matching to any code.
             TRACE_MSG("check: %c: failed", c->name);
-            c->valid = false;
 
             if ((i > 0) && (_seq_length == 0)) {
               // reanalyze this duration as a first duration for starting.
@@ -333,7 +373,14 @@ public:
 
           } else {
             TRACE_MSG("check: %c: fits", c->name);
-            match = true;
+            valid = true; // this code matches
+          } // if
+
+          // write back to code
+          c->valid = valid;
+
+          if (valid) {
+            match = true; // at least on code was matching this timing.
 
             // this timing is matching
             c->cnt = i = i + 1;
@@ -344,12 +391,14 @@ public:
               _seq[_seq_length++] = c->name;
               _seq[_seq_length] = NUL;
 
-              // start matching from the beginning with next timing
+              // start matching any code from the next time
               _resetCode(false);
               break;
             } // if
-          } // if
-        } // if
+
+          } // if (valid)
+        } // if (c-> valid)
+
         len--;
         c++;
       } // while
@@ -361,18 +410,29 @@ public:
         TRACE_MSG("found code.");
 
       if (!match) {
-        // no matching code timing found => reset everything.
+        // this timing doesn't find a matching code timing found
+
+        // use callback for  analysing the last bytes
+        if (_debugMode && (_seq_length > 10)) {
+          char buffer[16];
+          snprintf(buffer, sizeof(buffer), "*%d,%d", _seq_codelength, _seq_length);
+          _callbackFunc(buffer);
+        }
+        // Reset everything.
         _resetCode(true);
 
         if (retryCandidate)
           parse(duration);
 
       } else {
+        _seq_codelength++;
+
         if (foundCode) {
           // a complete code sequence was found
 
           if (_seq_length == 1) {
-            // The first found pattern defines the protocol to be scanned further
+            // The first found pattern defines the protocol to be scanned
+            // further
             if (!(foundCode->type & SP_START)) {
               // first code is not a valid starting code.
               _resetCode(true); // reset all code scanning
@@ -381,14 +441,20 @@ public:
               _seq_protocol = _findProt(foundCode->protId);
             }
 
-            // } else if (((_seq_length > _seq_protocol->minCodeLen) && !(foundCode->type & SP_END)) || (_seq_length == _seq_protocol->maxCodeLen)) {
-          } else if ((foundCode->type & SP_END) || (_seq_length == _seq_protocol->maxCodeLen)) {
+            // } else if (((_seq_length > _seq_protocol->minCodeLen) &&
+            // !(foundCode->type & SP_END)) || (_seq_length ==
+            // _seq_protocol->maxCodeLen)) {
+          } else if ((foundCode->type & SP_END) ||
+                     (_seq_length == _seq_protocol->maxCodeLen)) {
             // this is the last code in sequence
-
             if ((_callbackFunc) && (_seq_length >= _seq_protocol->minCodeLen)) {
+
               // found !
               char buffer[64];
-              snprintf(buffer, sizeof(buffer), "%s %s", _seq_protocol->name, _seq);
+              char *s = _seq;
+
+              snprintf(buffer, sizeof(buffer), "%s %s", _seq_protocol->name, s);
+
               _callbackFunc(buffer);
             }
             _resetCode(true);
@@ -404,12 +470,11 @@ public:
     TRACE_MSG("_seq: %s\n", _seq);
   } // parse()
 
-
   /** compose the timings of a sequence by using the code table.
- * @param sequence textual representation using "<protocolname> <codes>".
- * 
-*/
-  void compose(const char *sequence, uint32_t *timings, int len)
+   * @param sequence textual representation using "<protocolname> <codes>".
+   *
+   */
+  void compose(const char *sequence, CodeTime *timings, int len)
   {
     char protname[12];
 
@@ -417,10 +482,12 @@ public:
     strncpy(protname, sequence, sizeof(protname));
     protname[11] = NUL;
     char *s = strchr(protname, ' ');
-    if (s) *s = NUL;
+    if (s)
+      *s = NUL;
 
     s = (char *)strchr(sequence, ' ');
-    if (s) s++;
+    if (s)
+      s++;
 
     Protocol *p = _findProt(protname);
 
@@ -433,13 +500,11 @@ public:
           } // for
         }
         s++;
-        timings++;
         len--;
       }
       *timings = 0;
     } // if
   } // compose()
-
 
   /** Send a summary of the current code-table to the output. */
   void dumpTable()
@@ -448,7 +513,9 @@ public:
     int pCnt = _protocolCount;
     while (p && pCnt) {
       // dump the Protocol characteristics
-      RAW_MSG("Protocol %2d '%s', min:%d max:%d tol:%02u rep:%d\n", p->id, p->name, p->minCodeLen, p->maxCodeLen, p->tolerance, p->sendRepeat);
+      RAW_MSG("Protocol %2d '%s', min:%d max:%d tol:%02u rep:%d\n", p->id,
+              p->name, p->minCodeLen, p->maxCodeLen, p->tolerance,
+              p->sendRepeat);
 
       Code *c = _code;
       int cnt = _codeCount;

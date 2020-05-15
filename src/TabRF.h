@@ -14,8 +14,8 @@
  * * 06.08.2018 const char send, allow for sending only.
  */
 
-#ifndef TabRF_H
-#define TabRF_H
+#ifndef TabRF_H_
+#define TabRF_H_
 
 #include <Arduino.h>
 
@@ -34,81 +34,74 @@
 
 #define TabRF_ERR(...) Serial.printf("Error: " __VA_ARGS__)
 
+#define buf88_size 256
+
 // main class for the TabRF library
-class TabRFClass {
- public:
+class TabRFClass
+{
+public:
   /**
    * @brief Initialize receiving and sending pins and register
    * interrupt service routine.
    * @param recvPin
    * @param sendPin
    */
-  void init(SignalParser *sig, int recvPin, int sendPin);
+  void init(SignalParser *sig, int recvPin, int sendPin, int trim = 0);
 
   // send out a new code
   void send(const char *code, int value = 0);
 
   void loop();
 
-  uint32_t getBufferCount() { return (buf88_cnt); };
+  // ===== Insights and Debugging Helpers =====
 
-  // get last received timings
-  void getBufferData(uint32_t *buffer, int len) {
-    len--; // keep space for final '0';
-    if (len > buf88_size) len = buf88_size;
-
-    uint32_t *p = buf88_read - len;
-    if (p < buf88) p += buf88_size;
-
-    if (len) {
-      *buffer++ = *p++;
-
-      // reset pointer to the start when reaching end
-      if (p == TabRFClass::buf88_end)
-        p = TabRFClass::buf88;
-      len--;
-    }  // if
-    *buffer = 0;
+  // Return the number of buffered data in the ring buffer.
+  // This may be used to find the ring buffer is too small or loop() needs to be
+  // called more often.
+  uint32_t getBufferCount()
+  {
+    return (buf88_cnt);
   };
 
- private:
-#define buf88_size 256
-  // simple ring buffer to decouple interrupt routine
-  static uint32_t *buf88;                 // allocated memory
-  static volatile uint32_t *buf88_write;  // write pointer
-  static volatile uint32_t *buf88_read;   // read pointer
-  static uint32_t *buf88_end;          // end of buffer+1 pointer for wrapping
-  static volatile uint32_t buf88_cnt;  // number of bytes in buffer
+  /** Return the last received timings from the ring-buffer.
+   * When the length is larger than the ring buffer the length is reduced.
+   * There is always a 0 entry in the last timings.
+   * @param buffer target timing buffer
+   * @param len length of buffer
+   */
+  void getBufferData(SignalParser::CodeTime *buffer, int len);
+
+  /** dump the data from a table of timings that end with a 0 time.
+   * @param raw pointer to raw timings data.
+  */
+  void dumpTimings(SignalParser::CodeTime *raw);
+
+private:
+  // Ring buffer
+  // A simple ring buffer is used to decouple interrupt routine.
+  // Static variables are used to be known in the ISR
+  static SignalParser::CodeTime *buf88; // allocated memory
+  static volatile SignalParser::CodeTime *buf88_write; // write pointer
+  static volatile SignalParser::CodeTime *buf88_read; // read pointer
+  static SignalParser::CodeTime *buf88_end; // end of buffer+1 pointer for wrapping
+  static volatile unsigned int buf88_cnt; // number of bytes in buffer
 
   SignalParser *_sig;
 
-  /** hardware related settings */
-  int _recvPin;   // IO Pin number for receiving signals.
-  int _sendPin;   // IO Pin number for sendint signals.
-  int _irNumber;  // Interrupt number of receiver.
 
-  // ===== debug helper functions =====
+  /** hardware related settings */
+  static int _recvPin; // IO Pin number for receiving signals. static, to be
+      // known in the ISR
+  int _sendPin; // IO Pin number for sendint signals.
+  int _irNumber; // Interrupt number of receiver.
+  static int _trim; // timming factor
+
+
+  // ===== Interrupt service routine =====
 
   // This handler is attached to the change interrupt.
-  static void ICACHE_RAM_ATTR signal_change_handler() {
-    // last time the interrupt was called.
-    volatile static unsigned long lastTime = micros();
+  static void ICACHE_RAM_ATTR signal_change_handler();
 
-    unsigned long now = micros();
+}; // class TabRFClass
 
-    // write to ring buffer
-    if (TabRFClass::buf88_cnt < buf88_size) {
-      *TabRFClass::buf88_write++ = (uint32_t)(now - lastTime);
-      buf88_cnt++;
-
-      // reset pointer to the start when reaching end
-      if (TabRFClass::buf88_write == TabRFClass::buf88_end)
-        TabRFClass::buf88_write = TabRFClass::buf88;
-    }  // if
-
-    lastTime = now;  // micros();
-  }                  // signal_change_handler()
-
-};  // class TabRFClass
-
-#endif
+#endif // TabRF_H_
