@@ -17,9 +17,11 @@
 
 #include <Arduino.h>
 #include <TabRF.h>
-#include <cresta.h>
-#include <intertechno.h>
+#include <cresta_protocol.h>
+#include <intertechno_protocol.h>
 #include <sc5272_protocol.h>
+#include <nec_ir_protocol.h>
+
 #include <signal_parser.h>
 
 
@@ -131,7 +133,7 @@ void setup()
   Serial.println();
 
   Serial.println(
-      "Commands: 1-9(Send Code) T(Dump Code Table) R(aw toggle)");
+      "Commands: 1-2(Send Code) T(Dump Code Table) R(aw toggle)");
 
   // initialize the tabRF library
   tabRF.init(&sig, D7, NO_PIN, 16); // input at pin D8 , output a pin D3
@@ -140,6 +142,7 @@ void setup()
   // register_intertechno2(sig);
   register_cresta(sig);
   register_SC5272(sig, 95);
+  register_nec_ir(sig);
 
   sig.dumpTable();
   if (showRaw)
@@ -153,14 +156,6 @@ void setup()
 
 #define C1 "it2 s_##___#____#_#__###_____#__#_#__x"
 #define C2 "it2 s_##___#____#_#__###_____#____#__x"
-
-#define B1_on "s_##___#____#_#__###_____#__#____x"
-#define B1_off "s_##___#____#_#__###_____#_______x"
-
-#define B4_on "s_##___#____#_#__###_____#__#__##x"
-#define B4_off "s_##___#____#_#__###_____#_____##x"
-#define B4_d "s_##___#____#_#__###_____#__D__##_#__x"
-
 
 unsigned int maxBufCount = 0;
 
