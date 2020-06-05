@@ -1,25 +1,21 @@
 /*
-  file: intertechno2.ino
+  file: nectIR.ino
   This sample is part of the TabRF library showing how to receive and send
-  intertechno2 compatible codes.
+  Infrared codes.
   
-  This example shows that 2 different protocols can be decoded with the same receiver
-  by registering 2 protocols used by the intertechno devices.
+  This example shows how the nec IR protocol can be decoded with a IR receiver.
 
   http://www.mathertel.de/Arduino/TabRFlibrary.aspx
 
   Use the Serial Monitor to see the received codes and send the predefined
   codes.
 
-  25.03.2018 ported to ESP8266
-  29.03.2018 converted to library
+  05.06.2020 created
 */
 
 #include <Arduino.h>
 #include <TabRF.h>
-#include <cresta_protocol.h>
-#include <intertechno_protocol.h>
-#include <sc5272_protocol.h>
+#include <nec_ir_protocol.h>
 
 #include <signal_parser.h>
 
@@ -33,62 +29,6 @@ TabRFClass tabRF;
 
 // This function can be used to decode the Cresta Manchester protocol.
 // See cresta.h for further details.
-
-void cresta_decode(const char *p)
-{
-  uint8_t cresta_data[10]; // our device emits 10+2 data bytes, we only read the 10 and ignore the checksum
-  int cresta_cnt = 0; // number of received bytes
-
-  uint8_t cresta_byte = 0; // currenty byte value fom the stream
-  uint8_t cresta_bits = 0; // next bit to receive. 0..7, 8 is the 0-bit used inbetween data baytes
-
-  // simulate shifting in bits from header : 10101
-  cresta_byte = 0x15;
-  cresta_bits = 5;
-  bool bit = 1; // last bit was HIGH
-
-  while (*p) {
-    if (*p == 'l') {
-      bit = 1 - bit;
-    }
-    p++;
-
-    if (cresta_bits < 8) {
-      // shift bit into data byte
-      cresta_byte |= bit << cresta_bits;
-      cresta_bits++;
-    } else {
-      // shift completed byte into buffer
-      // bit must be 0, not verified
-      cresta_byte = cresta_byte ^ (cresta_byte << 1); // decode
-      cresta_data[cresta_cnt++] = cresta_byte;
-      // reset for next byte
-      cresta_bits = 0;
-      cresta_byte = 0;
-    }
-  } // while
-
-  // print received data
-  Serial.print("data:");
-  for (int i = 0; i < 7; i++) {
-    Serial.printf("%02x ", cresta_data[i]);
-  } // for
-  Serial.println();
-
-  if (cresta_data[0] != 0x9f) {
-    Serial.println("Bad data.");
-  } else {
-    // temperature
-    int temp = 100 * (cresta_data[5] & 0x0f) + 10 * (cresta_data[4] >> 4) + (cresta_data[4] & 0x0f);
-    Serial.printf("  temp: %d.%d °C\n", temp / 10, temp % 10);
-
-    // humidity
-    int hum = 10 * (cresta_data[6] >> 4) + (cresta_data[6] & 0x0f);
-    Serial.printf("  hum : %d %%\n", hum);
-  }
-
-} // cresta_decode
-
 
 // This function will be called when a complete protcol was received.
 void receiveCode(char *proto)
@@ -127,22 +67,17 @@ void receiveCode(char *proto)
 void setup()
 {
   Serial.begin(115200);
-  Serial.println("TabRF Packet Receiver");
+  Serial.println("necIR Packet Receiver");
   delay(2000);
   Serial.println();
-
-  Serial.println(
-      "Commands: 1-2(Send Code) T(Dump Code Table) R(aw toggle)");
 
   // initialize the tabRF library
   tabRF.init(&sig, D7, NO_PIN, 16); // input at pin D7, no output
 
-  register_intertechno1(sig);
-  register_intertechno2(sig);
-  register_cresta(sig);
-  register_SC5272(sig, 95);
+  register_nec_ir(sig);
 
   sig.dumpTable();
+
   if (showRaw)
     Serial.println("Raw mode is enabled");
   else
@@ -151,9 +86,6 @@ void setup()
   sig.attachCallback(receiveCode);
 } // setup()
 
-
-#define C1 "it2 s_##___#____#_#__###_____#__#_#__x"
-#define C2 "it2 s_##___#____#_#__###_____#____#__x"
 
 unsigned int maxBufCount = 0;
 
@@ -166,11 +98,9 @@ void loop()
     char cmd = Serial.read();
     if (cmd == '1') {
       Serial.println("Sending (C1)...");
-      tabRF.send(C1);
 
     } else if (cmd == '2') {
       Serial.println("Sending (C2)...");
-      tabRF.send(C2);
 
     } else if (cmd == 'T') {
       sig.dumpTable();
