@@ -11,10 +11,10 @@
 // More on the Manchester and Cresta protocol in /docs/cresta_protocol.md
 // To decode the temperature and humidity see example `TempSensor.ino`.
 
-#ifndef SIGNAL_PARSER_CRESTA_H_
-#define SIGNAL_PARSER_CRESTA_H_
+#ifndef SignalParser_CRESTA_H_
+#define SignalParser_CRESTA_H_
 
-#include "signal_parser.h"
+#include "SignalParser.h"
 
 
 /** register the "older" intertechno protocol */
@@ -36,6 +36,6 @@ void register_cresta(SignalParser &sig)
   sig.newCode(prot, 'l', SP_DATA, 2 * t);
 } // register_cresta()
 
-#endif // SIGNAL_PARSER_CRESTA_H_
+#endif // SignalParser_CRESTA_H_
 
 // End.

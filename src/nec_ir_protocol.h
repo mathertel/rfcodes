@@ -26,10 +26,10 @@
 // 1668,595,1676,631,1670,603,520,632,1670,601,522,631,521,593,558,602,524,628,522,595,556,604,1668,593,559,604,1668,594,1678,630,1669,604,
 
 
-#ifndef SIGNAL_PARSER_NEC_IR_H_
-#define SIGNAL_PARSER_NEC_IR_H_
+#ifndef SignalParser_NEC_IR_H_
+#define SignalParser_NEC_IR_H_
 
-#include "signal_parser.h"
+#include "SignalParser.h"
 
 
 /** register the "older" intertechno protocol */
@@ -63,6 +63,6 @@ void register_nec_ir(SignalParser &sig) {
 
 }  // register_nec_ir()
 
-#endif  // SIGNAL_PARSER_NEC_IR_H_
+#endif  // SignalParser_NEC_IR_H_
 
 // End.

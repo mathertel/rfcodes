@@ -1,6 +1,56 @@
 # TabRF => RF
 
-This is a library can encode and decode some commonly used RF 433 signals.
+This is a library that can encode and decode signals patterns that are used in the 433 MHz and IR technology.
+
+These signals use a carrier frequency (433MHz or 44kHz) that is switched on and off using a defined pattern.
+
+Each protocol often defined by a device manufacturer or a chip producing company consists of a series of pulses and pauses (codes) with a defined length that have a special semantic:
+
+* A **start code** is defined to recognize that a protocol is send out.
+This can be used to simply wait until such a unique timing can be found.
+The following codes often have shorter timings.
+Typically a short pulse and a long pause is part of the start code so another sender on the same frequency will break detecting the start condition.
+
+* Multipe **data codes** are defined to represent data bits. For binary protocols one sequence stays for a set bit and another for a cleared bit but you can find also protocols with 3 data codes. Multiple of these codes in a row can then be used to build the protocol data.
+
+* A **stop code** is defined for protocols that have a variable length of data.
+This is not strictly required when a fixed data length is defined so some protocols just end after a number of data sequences.
+
+There is a textual representation for sending and receiving a sequence by specifying the short name of the protocol and the characters specifying the code. For some protocols there is an algorithm defined that compiles the characters into a real value.
+
+**Example**
+
+The code used by the SC5272 chip is named "sc5", has 3 data codes ('0', '1' and 'f') and a stop code ('S') defined.
+So the textual representation may be "[sc5 0000f0000fffS]"
+
+
+## Use the library
+
+Using the library requires the following steps:
+
+* A set of protocol definitions that you expect that they are used.
+* A pin where the inbound signal comes in (receiver)
+* A pin where the outbound signal can be send (sender)
+* A function that get's called when a code was decoded.
+
+For the receiver role the library uses a interrupt routine that gets called when ever a signal change on the pin has been detected.
+Some microprocessors support only specidfic pins with interrupts
+so please look up the documentation for **Arduino attachInterrupt()** function for the processor.
+
+Sending a protocol uses no interrupts but also should not be interrupted by another ISR routine.
+
+
+## The Implementation
+
+There are 2 classes combined here:
+
+**TabRF** -> SignalDecoder
+
+The `TabRF` is an Arduino library that handles interrupt routines and the IO pins.
+For receiving codes the Interrupt Routine only collects timings from the receiver IO pin and passes them to the SingnalParser for detection.
+The sendig the timings are requested from the SingnalParser and send out to the sending pin.
+
+
 
 Since the solutions of the manufacturers vary quiet a lot this library can be adapted to different protocols by registering the signal patterns in a definition table.
 It has a modular approach so it can be adapted to other signal sources and frequencies.
@@ -8,15 +58,6 @@ It has a modular approach so it can be adapted to other signal sources and frequ
 To analyze the signals from senders the scanner example can be used to record the base timings. 
 
 
-## The Libraries
-
-There are 2 libraries combined here:
-
-**TabRF**
-
-The `TabRF` is an Arduino library that handles interrupt routines and the IO pins.
-For receiving codes the Interrupt Routine only collects timings from the receiver IO pin and passes them to the SingnalParser for detection.
-The sendig the timings are requested from the SingnalParser and send out to the sending pin.
 
 **SignalParser**
 

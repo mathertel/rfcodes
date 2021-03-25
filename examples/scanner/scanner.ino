@@ -69,7 +69,8 @@ void ICACHE_RAM_ATTR handleInterrupt()
 
       // ===== CHANGE STARTING CONDITION HERE:
 
-      if ((t > 6000) && (t < 12000)) {
+      if ((t > 8000) && (t < 10000)) {
+      // if ((t > 80) && (t < 1400)) {
         // a long time is detected, possibly a sync code
         status = STATUS_START;
         buf88_read = buf88_write;
@@ -153,21 +154,40 @@ void setup()
 void loop()
 {
   if (status == STATUS_PAUSE) {
+    lastStatus = status;
     if (digitalRead(startPin) == LOW) {
-      Serial.println("wait...");
+      Serial.print("press...");
+      while (digitalRead(startPin) == HIGH) {
+        delay(20);
+      }
+      Serial.println("done.");
+      delay(200);
       lastTime = micros();
       status = STATUS_WAIT; // Now interrupt will start recording any timings
     }
 
   } else if (status == STATUS_WAIT) {
+    if (lastStatus != status) {
+      Serial.println("wait...");
+      lastStatus = status;
+    }
 
   } else if (status == STATUS_CHECK) {
-    if (lastStatus != status)
+    if (lastStatus != status) {
       Serial.println("check...");
+      lastStatus = status;
+    }
+    if (digitalRead(startPin) == LOW) {
+      status = STATUS_START;
+      buf88_read = buf88_write;
+      buf88_cnt = 0;
+    }
 
   } else if (status == STATUS_START) {
-    if (lastStatus != status)
+    if (lastStatus != status) {
       Serial.print("collect...");
+      lastStatus = status;
+    }
     Serial.print('.'); // show some progress
     delay(30);
 
@@ -185,7 +205,6 @@ void loop()
     // done.
     status = STATUS_PAUSE;
   }
-  lastStatus = status;
 } // loop()
 
 // End.

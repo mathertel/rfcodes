@@ -14,10 +14,10 @@
 */
 
 #include <Arduino.h>
-#include <TabRF.h>
+#include <SignalCollector.h>
 #include <nec_ir_protocol.h>
 
-#include <signal_parser.h>
+#include <SignalParser.h>
 
 
 bool showRaw = false;

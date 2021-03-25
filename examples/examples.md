@@ -27,3 +27,8 @@ While recording all received timings the condition is evaluated and when the con
 Then all timings are send to Serial output to be visible in the monitor and can be analyzed. 
 
 
+## necIR
+
+This example shows how to receive and send the Infrared NEC protocol.
+
+https://github.com/crankyoldgit/IRremoteESP8266

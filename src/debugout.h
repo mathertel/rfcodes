@@ -9,6 +9,7 @@
 #define TRACE_MSG(...)
 #define ERROR_MSG(...)
 #define INFO_MSG(...)
+#define RAW_MSG(...)
 
 #elif defined(DEBUG_ESP_PORT)
 // ESP8266 way to specify the text output e.g. using Serial
@@ -23,6 +24,7 @@
 #define ERROR_MSG(fmt, ...) fprintf(stderr, "[error] " fmt "\n", __VA_ARGS__);
 #define INFO_MSG(fmt, ...) fprintf(stderr, "[info]  " fmt "\n", __VA_ARGS__);
 #define TRACE_MSG(fmt, ...) fprintf(stderr, "[trace] " fmt "\n", __VA_ARGS__);
+#define RAW_MSG(...)   fprintf(stderr, __VA_ARGS__);
 #endif
 
 #undef TRACE_MSG

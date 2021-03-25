@@ -9,7 +9,7 @@
 #define SC5272_PROTOCOL_H_
 
 
-#include "signal_parser.h"
+#include "SignalParser.h"
 
 
 void register_SC5272(SignalParser &sig, SignalParser::CodeTime t = 100) {

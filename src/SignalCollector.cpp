@@ -1,6 +1,6 @@
-// @file TabRF.cpp
+// @file SignalCollector.cpp
 
-#include "TabRF.h"
+#include "SignalCollector.h"
 
 // ====== TabRFClass implemenation =====
 

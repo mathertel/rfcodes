@@ -20,7 +20,7 @@
 #include <Arduino.h>
 
 #include "debugout.h"
-#include "signal_parser.h"
+#include "SignalParser.h"
 
 #define NUL '\0'
 #define null 0
