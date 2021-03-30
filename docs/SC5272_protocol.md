@@ -35,7 +35,5 @@ The baseTiming of 100 µ seconds is a good starting point but may be adjusted us
 
 ## See also
 
-* SC5272 datasheet <https://pdf1.alldatasheet.com/datasheet-pdf/view/98179/ETC/SC5272.html>
-* PT2264 datasheet <https://pdf1.alldatasheet.com/datasheet-pdf/view/205521/PTC/PT2264.html>
-
-
+* SC5272 datasheet <https://old.domotronic.fr/telechargement/SC5272S-L4datasheet.pdf>
+* PT2264 datasheet <http://www.princeton.com.tw/Portals/0/Product/PT2264_1.pdf>
