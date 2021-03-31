@@ -1,13 +1,13 @@
 /**
- * @file: TabRF.h
+ * @file: SignalCollector.h
  * @brief
- * This sample is part of the TabRF library that implements receiving an sending
- * RF protocols defined in a table.
+ * This file is part of the RFCodes library that implements receiving an sending
+ * RF and IR protocols.
  *
- * This work is licensed under a BSD style license,
+ * This work is licensed under a BSD 3-Clause style license,
  * https://www.mathertel.de/License.aspx.
  *
- * More information on http://www.mathertel.de/Arduino/tabrflibrary.aspx
+ * More information on http://www.mathertel.de/Arduino
  *
  * Changelog:
  * * 29.04.2018 created by Matthias Hertel
@@ -34,10 +34,10 @@
 
 #define TabRF_ERR(...) Serial.printf("Error: " __VA_ARGS__)
 
-#define buf88_size 256
+#define SC_BUFFERSIZE 512
 
 // main class for the TabRF library
-class TabRFClass
+class SignalCollector
 {
 public:
   /**
@@ -49,7 +49,7 @@ public:
   void init(SignalParser *sig, int recvPin, int sendPin, int trim = 0);
 
   // send out a new code
-  void send(const char *code, int value = 0);
+  void send(const char *code);
 
   void loop();
 
@@ -76,15 +76,21 @@ public:
   */
   void dumpTimings(SignalParser::CodeTime *raw);
 
+  // Inject a test timing into the ring buffer.
+  void injectTiming(SignalParser::CodeTime t);
+
+
 private:
   // Ring buffer
   // A simple ring buffer is used to decouple interrupt routine.
   // Static variables are used to be known in the ISR
   static SignalParser::CodeTime *buf88; // allocated memory
-  static volatile SignalParser::CodeTime *buf88_write; // write pointer
+  static volatile SignalParser::CodeTime *ringWrite; // write pointer
   static volatile SignalParser::CodeTime *buf88_read; // read pointer
   static SignalParser::CodeTime *buf88_end; // end of buffer+1 pointer for wrapping
   static volatile unsigned int buf88_cnt; // number of bytes in buffer
+
+  static unsigned long lastTime; // last time the interrupt was called.
 
   SignalParser *_sig;
 
@@ -102,6 +108,6 @@ private:
   // This handler is attached to the change interrupt.
   static void ICACHE_RAM_ATTR signal_change_handler();
 
-}; // class TabRFClass
+}; // class SignalCollector
 
 #endif // TabRF_H_

@@ -1,8 +1,19 @@
-// @file SignalCollector.cpp
+/**
+ * @file SignalCollector.cpp
+ * @brief
+ * This file is part of the RFCodes library that implements receiving an sending
+ * RF and IR protocols.
+ *
+ * This work is licensed under a BSD style license,
+ * https://www.mathertel.de/License.aspx.
+ *
+ * More information on http://www.mathertel.de/Arduino
+ *
+*/
 
 #include "SignalCollector.h"
 
-// ====== TabRFClass implemenation =====
+// ====== SignalCollector implemenation =====
 
 /**
  * Initialize the receiving and sending modes and activate the IO pins
@@ -11,7 +22,7 @@
  * @param sendPin The IO pin to be used for sending. Set to -1 to disable
  * sending mode.
  */
-void TabRFClass::init(SignalParser *sig, int recvPin, int sendPin, int trim)
+void SignalCollector::init(SignalParser *sig, int recvPin, int sendPin, int trim)
 {
   TRACE_MSG("Initalizing tabRF hardware\n");
 
@@ -44,14 +55,27 @@ void TabRFClass::init(SignalParser *sig, int recvPin, int sendPin, int trim)
 } // init()
 
 
-void TabRFClass::send(const char *signal, int value)
+void strcpyProtname(char *target, const char *signal)
+{
+  char *p = target;
+  char *s = (char *)signal;
+  int len = PROTNAME_LEN - 1;
+  while (len && *s && (*s != ' ')) {
+    *p++ = *s++;
+    len--;
+  }
+  *p = NUL;
+} // strcpyProtname
+
+
+void SignalCollector::send(const char *signal)
 {
   SignalParser::CodeTime timings[MAX_TIMING_LENGTH];
   int level = LOW; // LOW level before starting.
   INFO_MSG("send(%s)", signal);
 
   char protname[PROTNAME_LEN];
-  _sig->strcpyProtname(protname, (char *)signal);
+  strcpyProtname(protname, (char *)signal);
   INFO_MSG("send prot %s", protname);
 
   int repeat = _sig->getSendRepeat(protname);
@@ -83,17 +107,17 @@ void TabRFClass::send(const char *signal, int value)
 
 
 // process bytes from ring buffer
-void TabRFClass::loop()
+void SignalCollector::loop()
 {
-  while (TabRFClass::buf88_cnt > 0) {
-    SignalParser::CodeTime t = *TabRFClass::buf88_read++;
-    TabRFClass::buf88_cnt--;
+  while (SignalCollector::buf88_cnt > 0) {
+    SignalParser::CodeTime t = *SignalCollector::buf88_read++;
+    SignalCollector::buf88_cnt--;
 
     _sig->parse(t);
 
     // reset pointer to the start when reaching end
-    if (TabRFClass::buf88_read == TabRFClass::buf88_end)
-      TabRFClass::buf88_read = TabRFClass::buf88;
+    if (SignalCollector::buf88_read == SignalCollector::buf88_end)
+      SignalCollector::buf88_read = SignalCollector::buf88;
     yield();
   } // while
 } // loop
@@ -103,23 +127,23 @@ void TabRFClass::loop()
 
 
 /** Return the last received timings from the ring-buffer. */
-void TabRFClass::getBufferData(SignalParser::CodeTime *buffer, int len)
+void SignalCollector::getBufferData(SignalParser::CodeTime *buffer, int len)
 {
   len--; // keep space for final '0';
-  if (len > buf88_size)
-    len = buf88_size;
+  if (len > SC_BUFFERSIZE)
+    len = SC_BUFFERSIZE;
 
   SignalParser::CodeTime *p = (SignalParser::CodeTime *)buf88_read - len;
   if (p < buf88)
-    p += buf88_size;
+    p += SC_BUFFERSIZE;
 
   // copy timings to buffer
   while (len) {
     *buffer++ = *p++;
 
     // reset pointer to the start when reaching end
-    if (p == TabRFClass::buf88_end)
-      p = TabRFClass::buf88;
+    if (p == SignalCollector::buf88_end)
+      p = SignalCollector::buf88;
     len--;
   } // if
   *buffer = 0;
@@ -127,7 +151,7 @@ void TabRFClass::getBufferData(SignalParser::CodeTime *buffer, int len)
 
 
 /** dump the data from a table of timings that end with a 0 time. */
-void TabRFClass::dumpTimings(SignalParser::CodeTime *raw)
+void SignalCollector::dumpTimings(SignalParser::CodeTime *raw)
 {
   // dump probes
   SignalParser::CodeTime *p = raw;
@@ -150,46 +174,69 @@ void TabRFClass::dumpTimings(SignalParser::CodeTime *raw)
 // static class stuff, to be accessible to the Interrupt service routines.
 
 // This handler is attached to the change interrupt.
-void ICACHE_RAM_ATTR TabRFClass::signal_change_handler()
+void ICACHE_RAM_ATTR SignalCollector::signal_change_handler()
 {
-  // last time the interrupt was called.
-  volatile static unsigned long lastTime = micros();
-
   unsigned long now = micros();
-  SignalParser::CodeTime t = (SignalParser::CodeTime)(now - lastTime);
+  SignalParser::CodeTime t = (SignalParser::CodeTime)(now - SignalCollector::lastTime);
 
   // adjust the timing with the trim factor.
   int level = digitalRead(_recvPin);
   if (level) {
-    t += TabRFClass::_trim; // end of low
+    t += SignalCollector::_trim; // end of low
   } else {
-    t -= TabRFClass::_trim; // end of high
+    t -= SignalCollector::_trim; // end of high
   }
 
   // write to ring buffer
-  if (TabRFClass::buf88_cnt < buf88_size) {
-    *TabRFClass::buf88_write++ = t;
+  if (SignalCollector::buf88_cnt < SC_BUFFERSIZE) {
+    *SignalCollector::ringWrite++ = t;
     buf88_cnt++;
 
     // reset pointer to the start when reaching end
-    if (TabRFClass::buf88_write == TabRFClass::buf88_end)
-      TabRFClass::buf88_write = TabRFClass::buf88;
+    if (SignalCollector::ringWrite == SignalCollector::buf88_end)
+      SignalCollector::ringWrite = SignalCollector::buf88;
   } // if
 
   lastTime = now; // micros();
 } // signal_change_handler()
 
 
-int TabRFClass::_recvPin = -1;
-int TabRFClass::_trim = 0;
+// Inject a test timing into the ring buffer.
+void SignalCollector::injectTiming(SignalParser::CodeTime t)
+{
+  // write to ring buffer
+  if (SignalCollector::buf88_cnt < SC_BUFFERSIZE) {
+    *SignalCollector::ringWrite++ = t;
+    buf88_cnt++;
 
-SignalParser::CodeTime *TabRFClass::buf88 =
-    (SignalParser::CodeTime *)malloc(buf88_size * sizeof(SignalParser::CodeTime)); // allocated memory
-volatile SignalParser::CodeTime *TabRFClass::buf88_write =
-    TabRFClass::buf88; // write pointer
-volatile SignalParser::CodeTime *TabRFClass::buf88_read = TabRFClass::buf88; // read pointer
-SignalParser::CodeTime *TabRFClass::buf88_end =
-    TabRFClass::buf88 + buf88_size; // end of buffer+1 pointer for wrapping
-volatile unsigned int TabRFClass::buf88_cnt = 0; // number of bytes in buffer
+    // reset pointer to the start when reaching end
+    if (SignalCollector::ringWrite == SignalCollector::buf88_end)
+      SignalCollector::ringWrite = SignalCollector::buf88;
+  } // if
+
+  SignalCollector::lastTime = micros();
+} // injectTiming()
+
+
+int SignalCollector::_recvPin = -1;
+int SignalCollector::_trim = 0;
+
+// allocate and initialize the static class members.
+
+unsigned long SignalCollector::lastTime = 0;
+
+// allocate memory for ring buffer
+SignalParser::CodeTime *SignalCollector::buf88 = (SignalParser::CodeTime *)malloc(SC_BUFFERSIZE * sizeof(SignalParser::CodeTime));
+
+// write pointer starts at start
+volatile SignalParser::CodeTime *SignalCollector::ringWrite = SignalCollector::buf88;
+
+// read pointer starts at start
+volatile SignalParser::CodeTime *SignalCollector::buf88_read = SignalCollector::buf88;
+
+// end of buffer + 1 pointer for wrapping
+SignalParser::CodeTime *SignalCollector::buf88_end = SignalCollector::buf88 + SC_BUFFERSIZE;
+
+volatile unsigned int SignalCollector::buf88_cnt = 0; // number of bytes in buffer
 
 // End.

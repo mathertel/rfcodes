@@ -13,10 +13,10 @@
 
 #elif defined(DEBUG_ESP_PORT)
 // ESP8266 way to specify the text output e.g. using Serial
-#define ERROR_MSG(...) DEBUG_ESP_PORT.printf(__VA_ARGS__); DEBUG_ESP_PORT.printf("\n");
-#define INFO_MSG(...) DEBUG_ESP_PORT.printf(__VA_ARGS__); DEBUG_ESP_PORT.printf("\n");
-#define TRACE_MSG(...) DEBUG_ESP_PORT.printf(__VA_ARGS__); DEBUG_ESP_PORT.printf("\n");
-#define RAW_MSG(...)   DEBUG_ESP_PORT.printf(__VA_ARGS__);
+#define ERROR_MSG(...) { DEBUG_ESP_PORT.printf(__VA_ARGS__); DEBUG_ESP_PORT.println(); }
+#define INFO_MSG(...)  { DEBUG_ESP_PORT.printf(__VA_ARGS__); DEBUG_ESP_PORT.println(); }
+#define TRACE_MSG(...) { DEBUG_ESP_PORT.printf(__VA_ARGS__); DEBUG_ESP_PORT.println(); }
+#define RAW_MSG(...)   { DEBUG_ESP_PORT.printf(__VA_ARGS__); }
 
 #else
 #include <cstdio>

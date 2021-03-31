@@ -12,7 +12,7 @@ More details on the protocol can be found in <http://members.upc.nl/m.beukelaar/
 
 ## How manchester code can be decoded based on fixed codes
 
-The recorded sequence begins with the data bit 0x75 transferred with the LSB first and a 0-bit inbetween the byte: `0 1-0-1-0-1-1-1-0 0`. 
+The recorded sequence begins with the data bit 0x75 transferred with the LSB first and a 0-bit between the bytes: `0 1-0-1-0-1-1-1-0 0`. 
 This results in Huffman coding: `LH HL-LH-HL-LH-HL-HL-HL-LH LH`
 
 When two signals in a row with the same level will result in a long and others in short timings: 
