@@ -138,5 +138,3 @@ Descriptions and projects found on the internet:
 
 * <https://wiki.fhem.de/wiki/Intertechno_Code_Berechnung>
 
-* <https://bitbucket.org/fuzzillogic/433mhzforarduino/wiki/Home>
-* <https://homeeasyhacking.fandom.com/wiki/Advanced_Protocol>

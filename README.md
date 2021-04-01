@@ -1,27 +1,13 @@
-# TabRF => RF
+# RFCodes library
 
 This is a library that can encode and decode signals patterns that are used in the 433 MHz and IR technology.
 
 These signals use a carrier frequency (433MHz or 44kHz) that is switched on and off using a defined pattern.
 
-Each protocol often defined by a device manufacturer or a chip producing company consists of a series of pulses and pauses (codes) with a defined length that have a special semantic:
-
-* A **start code** is defined to recognize that a protocol is send out.
-This can be used to simply wait until such a unique timing can be found.
-The following codes often have shorter timings.
-Typically a short pulse and a long pause is part of the start code so another sender on the same frequency will break detecting the start condition.
-
-* Multipe **data codes** are defined to represent data bits. For binary protocols one sequence stays for a set bit and another for a cleared bit but you can find also protocols with 3 data codes. Multiple of these codes in a row can then be used to build the protocol data.
-
-* A **stop code** is defined for protocols that have a variable length of data.
-This is not strictly required when a fixed data length is defined so some protocols just end after a number of data sequences.
+Each protocol often defined by a device manufacturer or a chip producing company consists of a series of pulses and pauses (codes) with a defined length that have a special semantic.
 
 There is a textual representation for sending and receiving a sequence by specifying the short name of the protocol and the characters specifying the code. For some protocols there is an algorithm defined that compiles the characters into a real value.
-
-**Example**
-
-The code used by the SC5272 chip is named "sc5", has 3 data codes ('0', '1' and 'f') and a stop code ('S') defined.
-So the textual representation may be "[sc5 0000f0000fffS]"
+So any code sequence corresponds to a textual representation like `it2 s_##___#____#_#__###_____#__#____x`
 
 
 ## Use the library
@@ -31,205 +17,162 @@ Using the library requires the following steps:
 * A set of protocol definitions that you expect that they are used.
 * A pin where the inbound signal comes in (receiver)
 * A pin where the outbound signal can be send (sender)
-* A function that get's called when a code was decoded.
+* A function that gets called when a code was decoded.
 
 For the receiver role the library uses a interrupt routine that gets called when ever a signal change on the pin has been detected.
-Some microprocessors support only specidfic pins with interrupts
+Some microprocessors support only specific pins with interrupts
 so please look up the documentation for **Arduino attachInterrupt()** function for the processor.
 
 Sending a protocol uses no interrupts but also should not be interrupted by another ISR routine.
 
 
-## The Implementation
+## The Wiring
+
+A interrupt capable pin can be used to attach a receiver. e.g. D5 on a ESP8266 board.
+
+Another pin can be used to attach a transmitter e.g. D6 on a ESP8266 board.
+
+Both, receiver and transmitter must be connected to VCC and GND.
+Best option is to use variants that can be used with 3.3V when using a ESP8266.
+
+```TXT
+     3.3V ---------------- 3.3V --------------- 3.3V
+      |                     |                    |  
++-----+-----+         +-----+-----+         +----+------+
+| RF433     |         | ESP8266   |         | RF433     |
+| receiver  +----> D5-+ board     +-D6 ---->+ sender    |  
+| module    |         |           |         | module    |
++-----+-----+         +-----+-----+         +----+------+
+      |                     |                    |  
+     GND ----------------- GND ---------------- GND
+```
+
+The receiver modules that can be used must detect the RF signal and produce a signal when the carrier frequency has been detected. The polarity of the signal is not relevant.
+The modules I used and found reliable are the type RXB8 and RXB12, both with a ceramic resonator. The RF-5V and XY-MK-5V modules were not reliable in my environment and setup.
+
+The sender modules must produce a carrier frequency on HIGH output. When not transmitting a code the output is LOW so other devices can use the carrier frequency on their own. I used several modules all with ceramic resonators (no adjustable air coils). They seem to be less critical.
+
+
+## Protocol definitions
+
+Here are some hints on how to configure a protocol:
+
+In the protocol structure the (short) name of the protocol and some
+settings must be defined:
+
+* **name** - a short name of the protocol.
+* **minCodeLen** - the minimum length of a code sequence including all start, data and end codes.
+* **maxCodeLen** - the maximum length of a code sequence including all start, data and end codes.
+* **tolerance** - codes are not sent and not captured using very precise timings. The tolerance defines the percentage the timing may derive.
+* **sendRepeat** - When sending the code the sequence should be repeated as specified by the sendRepeat parameter.
+* **baseTime** - Many protocols use a base clock time. This should be specified in the baseTime parameter and the factors in the code.
+* **codes** -  The list of codes in this protocol.
+
+In the code definitions the typical timing patterns are defined.
+
+* **type** - The code type defines the role of this code in the sequence.
+
+    * A **start code** is defined to recognize that a protocol is send out as it is sent at the beginning only.
+    This can be used to simply wait until such a unique timing can be found. This may be a code with a exceptional duration or a series of durations marking the start of a sequence.
+    As the following codes often have shorter timings so a
+    short pulse and a long pause is part of many protocols to detect other senders transmitting into the pause. A simple way of collision detection.
+
+    * Multiple **data codes** are defined to represent data bits.
+    For binary protocols one sequence stays for a set bit and another for a cleared bit but you can find also protocols with 3 data codes. Multiple of these codes in a row can then be used to build the protocol data.
+
+    * A **end code** marks the end of a sequence.
+    This is useful for protocols that have a variable length of data.
+    A code defined with the END flag will always stop the current sequence detection. When the minimum length is not yet given the sequence is not taken as a valid code.
+
+    * Codes with a **fixed length** are defined using the minimum and maximum length with the length of the sequence. Do use the END flag only when there is a special code defined marking the end.
+    Some protocols just end after a number of codes.
+
+* **name** - The single character representing a code in the sequence.
+It must be unique within the protocol. 
+
+* **durations** - The list of durations that represent the code.
+
+
+### Protocol Example
+
+The code used by the SC5272 chip is named "sc5", has 3 data codes ('0', '1' and 'f') and a stop code ('S') defined.
+So the textual representation may be "[sc5 0000f0000fffS]"
+
+The chip can be used with different clock speeds so the baseTime can be adjusted to fit the speed of your device.
+
+```CPP
+/** Definition of the protocol from SC5272 and similar chips with 32 - 46 data bits data */
+SignalParser::Protocol sc5 = {
+    "sc5",
+    .minCodeLen = 1 + 12,
+    .maxCodeLen = 1 + 12,
+
+    .tolerance = 25,
+    .sendRepeat = 3,
+    .baseTime = 100,
+    .codes = {
+        {SignalParser::CodeType::ANYDATA, '0', {4, 12, 4, 12}},
+        {SignalParser::CodeType::ANYDATA, '1', {12, 4, 12, 4}},
+        {SignalParser::CodeType::ANYDATA, 'f', {4, 12, 12, 4}},
+        {SignalParser::CodeType::END, 'S', {4, 124}}}};
+```
+
+This 3-state protocol is also found using the END code as a start code. When submitting multiple sequences in a row as it is usually done by senders and expected by receivers this protocol is partially equivalent to the `it1` protocol.
+
+
+## Implementation
 
 There are 2 classes combined here:
-
-**TabRF** -> SignalDecoder
-
-The `TabRF` is an Arduino library that handles interrupt routines and the IO pins.
-For receiving codes the Interrupt Routine only collects timings from the receiver IO pin and passes them to the SingnalParser for detection.
-The sendig the timings are requested from the SingnalParser and send out to the sending pin.
-
-
-
-Since the solutions of the manufacturers vary quiet a lot this library can be adapted to different protocols by registering the signal patterns in a definition table.
-It has a modular approach so it can be adapted to other signal sources and frequencies.
-
-To analyze the signals from senders the scanner example can be used to record the base timings. 
-
 
 
 **SignalParser**
 
-The `SignalParser` is a general usable class that knows all about the timing of codes in the protocol and knows how to decode and encode them. 
+The `SignalParser` is a general usable class that knows all about the timing of codes in the protocol
+and knows how to decode and encode them. 
 
+This class can take pulse/gap durations give to the `parse()` method and uses the registered protocol definitions
+to detect a full protocol sequence using valid codes.
+This allows a flexible usage of the SignalParser to be combined with different signal sources and frequencies
+or use the class to test for codes in a given series of durations. (see Example testcodes.ino)
 
-## The Wiring
+Since the solutions of the manufacturers vary quiet a lot this library can be adapted to different protocols by registering the signal patterns of the protocols using the `load` method by passing a Protocol+Codes definition.
 
+Whenever a full sequence is detected from the given durations the callback function is used to pass the sequence over for further processing. 
+
+```CPP
+SignalParser sig;
+
+// load some protocols into the SignalParser
+sig.load(&it1);
+sig.load(&it2);
+
+// register the callback function.
+sig.attachCallback(receiveCode);
 ```
-+-------------+        +-------------+       +-------------+
-|  RF433      |        |  Arduino /  |       |  RF433      |
-|  receiver   |  -->   |  ESP8266    |  -->  |  sender     |  
-|  module     |        |  board      |       |  module     |
-+-------------+        +-------------+       +-------------+
+
+**SignalCollector**
+
+The `SignalCollector` class handles interrupt routines and the IO pins. every time when receiving a signal change
+the duration since the previous change is collected into a buffer.
+
+The loop() function must be called from the main loop function to transfer the durations from the buffer into the parser.
+
+Sending a sequence is done by calling the send() function with the protocol name and the codes as a string.
+
+```CPP
+SignalCollector col;
+
+// initialize the SignalCollector library
+col.init(&sig, D5, D6); // input at pin D5, output at pin D6
+
+// send a sequence
+col.send("it2 s_##___#____#_#__###_____#____#__x");
 ```
 
-The receiver modules that can be used must detect the RF signal and produce a signal when the carrier frequency has been detected. The polarity of the signal is not relevant.
+## See also
 
-The receivers I used and found reliable are the type RXB8 and RXB12, both with a ceramic resonator. The RF-5V and XY-MK-5V modules were not reliable in my environment.
+* [About RF Protocols](/docs/rf433.md)
+* [Standard protocols](/docs/SC5272_protocol.md)
+* [intertechno protocols](/docs/intertechno_protocol.md)
+* [Cresta protocol for sensors](/docs/cresta_protocol.md)
 
-The sender modules must produce a carrier frequency on HIGH output. When not transmitting a code the output is LOW so other devices can use the carrier frequency on their own.
-
-I used several modules all with caramic resonators (no adjustable air coils). They seem to be less critical.
-
-
-## RF Protocols
-
-The protocols used with RF 433 signals all use specific carrier frequency on/off code patterns to send a specific information over the air.
-
-Most protocols define code patterns for start and stop, LOW bits and HIGH bits but there are also protocols that use more than 2 code patterns.
-
-To get a universal representation of a code sequence the protocol is given a short name and each code has a character. So any code
-sequence corresponds to a textual representation like `it2 s_##___#____#_#__###_____#__#____x`
-
-The first word is the name of the protocol registered in he table. The second word ist the sequence of codes.
-
-The protocols are registered to the SignalParser Library.
-
-
-## Signal decoding
-
-The implementation of the library is made up of 3 parts:
-
-* The TabRF library uses an interrupt routine and produces a stream of numbers that correlate to the time between 2 signal changes.
-  
-* The timings are delivered to a static ring buffer so the interrupt routine can return as soon as possible.
-
-* By calling the rfsend.loop() function in the loop() function of the main sketch the signal timings are taken from the buffer and are passed to the SignalParser. 
-
-* The TabRF library allows retrieving the last timings from the ring buffer and supports analyzing timings after receiving and recording them. 
-
-* When a starting code is detected (a code that fits for a starting sequence) the capturing for this protocol starts.
-  
-* When receiving a timing that doesn't fit to any defined code the receiving is reset and will restart with a next starting code that is detected.
-
-* When a stop code is detected or the max length of the protocol is reached the sequence is made available to the sketch using a callback function.
-
-TODO:
-A debug mode in the signalParser is enabled the callback function alos reports when a start sequence and some following data codes could be received but then parsing failed on a specific timing.
-
-Analyzing Example
-
-
-## Register a Protocol
-
-To register a new protocol 2 structures are used.
-
-The `Protocol` structure defines the characteristics on the protocol level. This is done using the method
-
-    /**
-    * @brief Register a new protocol.
-    * @param name a short name for the protocol
-    * @param minLen the minimal length of a valid code sequence.
-    * @param maxLen the maximal length of a valid code sequence.
-    * @param tolerance the tolerance in percent for timings to be recognized.
-    * @param repeat the number of sequences to be sent in a row. 
-    */
-    uint8_t newProtocol(char *name, uint8_t minLen, uint8_t maxLen, uint8_t tolerance=4, uint8_t repeat=3);
-
-The returned Protocol ID can be used to register the codes for the protocol.
-
-
-## Register a Code
-
-To register a new code for the processing the following function can be used:
-
-up to 8 timings
-
-uint8_t newCode(protID, ch, type, t1, t2, t3=0, t4=0, t5=0, t6=0, t7=0, t8=0); 
-
-
-## Finding Codes on the internet
-
-There are some good sources of protocol definitions available. Here are some links I found useful:
-
-* <https://manual.pilight.org/protocols/433.92/index.html>
-* <https://github.com/pilight/pilight/tree/master/libs/pilight/protocols/433.92>
-
-https://www.arctech.com.tw/index.php/product/detail/293
-
-arctech 
-
-
-
-## Trimming the receiver 
-
-On some receiver boards like the RxB8 you can observe that pulse transmissions often are rated longer than pulse pauses. By adjusting this in the timing some real better results can be observed and codes can be recognized better.
-
-With the raw scanner (see scanner.md) you can collect some probes from a specific sender where you know the exact timings. I took a signal where 1:3 and 3:1 transmissions are used
-and by subtracting a specific trim value from HIGH signal and adding them to LOW signal timings the exact 1:3 could be observed. You can define this optional parameter in the init  function.
-
-
-
-void protocol(uint8_t minCodeLen, uint8_t maxCodeLen) 
-
-
-  // minimal number of codes in a row required by the protocol
-  uint8_t minCodeLen;
-
-  // maximum number of codes in a row defining a complete  CodeSequence.
-  uint8_t maxCodeLen;
-
-  // tolerance of the timings in percent.
-  uint8_t tolerance;
-
-  // Number of repeats when sending.
-  uint8_t sendRepeat;
-
-  // Number of defined codes in this table
-  uint8_t length;
-
-
-
- from a receiver and can send out    
-
-
-receive and send signals patterns 
-
-
-This is a RF signal encode and decode library that can be adapted to different protocols by specifying the timing conditions ia a table. Can be used with 433 MHz receivers and senders.
-
-10.04.2018: This library was created on AVR and ported to esp8266 boards. It is still under construction.
-
-
-## why RF signals sometime fail...
-
-### Some noise from somewhere else
-
-Here is an example next to a `[it2 s_##___#____#_#__###_____#____#__x]` sequence.
-When receiving the 15. code the pause expected to have 1250 µsecs. was interrupted by another signal and ended therefore with about 409 µsecs.
-
-```TXT
-s 283	2658
-_ 286  255 296 1269 	
-# 286	1269 287  267 	
-# 285	1268 289  264 	
-_ 285	 249 289 1278 	
-_ 286	 251 285 1282 	
-_ 289	 249 287 1278 	
-# 288	1268 291  261 	
-_ 294	 239 294 1287 	
-_ 287	 252 286 1281 	
-_ 284	 254 287 1278 	
-_ 290  251 286 1279 	
-# 285	1259 294  268 	
-_ 283	 259 287 1272 	
-  291  409
-```			
-
-## TODO
-
-* Add more protocols
-* Port back to AVR.
-* Use debugging output not using printf to save memory on AVR cores.
-* Documentation on <https://www.mathertel.de/Arduino/TabRF.aspx>

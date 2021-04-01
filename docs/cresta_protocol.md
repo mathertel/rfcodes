@@ -1,4 +1,4 @@
-# Cresta protocol 
+# Cresta protocol for sensors
 
 This protocol definition supports the manchester encoded protocol that is used in some temperature and humidity sensors using 433 MHz transmission.
 
@@ -49,28 +49,3 @@ Then the temperature and humidity is takenfrom the data bits and printed to the 
 
 * <http://members.upc.nl/m.beukelaar/Crestaprotocol.pdf>
  
-
-
-
-
-
-
-
-
-
-
-[cw Hsslsllssllsssslllsslllsllllsllsllsslssslslsssslllslsslssss]
-data:9f 33 ce de 13 c2 12 
-.temp: 21.3 °C
-.hum: 12 %
-
-check 9f, 13
-
-BAD:
-
-[cw Hlsslsllssllsssslllsslllsllllsllsllssllsssslssssllllslsssss]
-data:3f 67 9d bd 67 85 0b 
-.temp: 56.7 °C
-.hum: 11 %
-
-

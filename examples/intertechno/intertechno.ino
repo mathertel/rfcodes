@@ -101,13 +101,13 @@ void cresta_decode(const char *p)
 // This function will be called when a complete protcol was received.
 void receiveCode(const char *proto)
 {
-  SignalParser::CodeTime lastProbes[120+1]; // dividable by 8 is preferred.
+  SignalParser::CodeTime lastProbes[120 + 1]; // dividable by 8 is preferred.
   // remember last code in a local variable
   Serial.printf("[%s]\n", proto);
 
   // analysing supporting callback
   if (showRaw) {
-    col.getBufferData(lastProbes, 120+1);
+    col.getBufferData(lastProbes, 120 + 1);
 
     // dump probes
     SignalParser::CodeTime *p = lastProbes;
@@ -142,15 +142,17 @@ void setup()
   Serial.println(
       "Commands: 1-2(Send Code) D(ump Code Table) R(aw toggle)");
 
-  // initialize the SignalCollector library
-  col.init(&sig, D5, D6); // input at pin D5, output at pin D6
-
+  // load the protocols into the SignalParser
   sig.load(&it1);
   sig.load(&it2);
   sig.load(&sc5);
   sig.load(&cw);
 
+  // show all defined protocols
   sig.dumpTable();
+
+  // initialize the SignalCollector library
+  col.init(&sig, D5, D6); // input at pin D5, output at pin D6
 
   if (showRaw)
     Serial.println("Raw mode is enabled");

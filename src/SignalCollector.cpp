@@ -4,7 +4,7 @@
  * This file is part of the RFCodes library that implements receiving an sending
  * RF and IR protocols.
  *
- * This work is licensed under a BSD style license,
+ * This work is licensed under a BSD 3-Clause style license,
  * https://www.mathertel.de/License.aspx.
  *
  * More information on http://www.mathertel.de/Arduino

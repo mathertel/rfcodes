@@ -1,4 +1,4 @@
-# Software License Agreement (BSD License)
+# Software License Agreement (BSD 3-Clause Style License)
 
 See http://www.mathertel.de/License.aspx
 
