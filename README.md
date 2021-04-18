@@ -143,8 +143,8 @@ Whenever a full sequence is detected from the given durations the callback funct
 SignalParser sig;
 
 // load some protocols into the SignalParser
-sig.load(&it1);
-sig.load(&it2);
+sig.load(&RFCodes::it1);
+sig.load(&RFCodes::it2);
 
 // register the callback function.
 sig.attachCallback(receiveCode);

@@ -82,9 +82,9 @@ public:
     CodeTime maxTime[MAX_TIMELENGTH]; // average time of the code part.
 
     // these fields reflect the current status of the code.
-    int cnt; // number of discovered timings.
-    bool valid;  // is true while discovering and the code is still possible.
-  };             // struct Code
+    int cnt;    // number of discovered timings.
+    bool valid; // is true while discovering and the code is still possible.
+  };            // struct Code
 
 
   // The Protocol structure is used to hold the basic settings for a protocol.
@@ -129,7 +129,8 @@ private:
   // ===== class variables =====
 
   /** Protocol table and related settings */
-  Protocol *_protocol;
+  Protocol **_protocol;
+  int _protocolAlloc = 0;
   int _protocolCount = 0;
 
   CallbackFunction _callbackFunc;
@@ -172,7 +173,7 @@ public:
   void compose(const char *sequence, CodeTime *timings, int len);
 
   /** Load a protocol to be used. */
-  int load(Protocol *protocol);
+  void load(Protocol *protocol);
 
 
   // ===== debug helpers =====
@@ -180,6 +181,8 @@ public:
   /** Send a summary of the current code-table to the output. */
   void dumpProtocol(Protocol *p)
   {
+    TRACE_MSG("dump %08x", p);
+
     if (p) {
       // dump the Protocol characteristics
       RAW_MSG("Protocol '%s', min:%d max:%d tol:%02u rep:%d\n",
@@ -207,15 +210,11 @@ public:
   /** Send a summary of the current code-table to the output. */
   void dumpTable()
   {
-    Protocol *p = _protocol;
-    int pCnt = _protocolCount;
-    while (p && pCnt) {
+    for (int n = 0; n < _protocolCount; n++) {
+      Protocol *p = _protocol[n];
       dumpProtocol(p);
-      p++;
-      pCnt--;
-    } // while
+    } // for
   }   // dumpTable()
-
-}; // class
+};    // class
 
 #endif // SignalParser_H_

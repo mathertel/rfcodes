@@ -7,15 +7,19 @@
 
 #include "SignalParser.h"
 
+/** namespace for defining codes for the Arduino RFCodes library. */
+namespace RFCodes
+{
+
 /** Definition of the "older" intertechno protocol with fixed 12 bits of data */
 SignalParser::Protocol it1 = {
     "it1",
     .minCodeLen = 1 + 12,
     .maxCodeLen = 1 + 12,
 
-    .tolerance = 15,
+    .tolerance = 25,
     .sendRepeat = 4,
-    .baseTime = 420,
+    .baseTime = 400,
     .codes = {
         {SignalParser::CodeType::START, 'B', {1, 31}},
         {SignalParser::CodeType::DATA, '0', {1, 3, 3, 1}},
@@ -73,6 +77,8 @@ SignalParser::Protocol cw = {
         {SignalParser::CodeType::START, 'H', {2, 2, 2, 2, 2}},
         {SignalParser::CodeType::DATA, 's', {1, 1}},
         {SignalParser::CodeType::DATA, 'l', {2}}}};
+
+} // namespace RFCodes
 
 #endif // SignalParser_PROTOCOLS_H_
 

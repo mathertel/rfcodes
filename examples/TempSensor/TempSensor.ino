@@ -1,17 +1,30 @@
-/*
-  file: TempSensor.ino
-  This example is part of the TabRF library showing how to receive codes from a temperature and humidity sensor using a 433 MHz protocol.
-  For more details see cresta_protocol.md in the docu folder. 
+/**
+ * @file TempSensor.ino
+ * 
+ * @author Matthias Hertel (https://www.mathertel.de)
+ * @copyright Copyright (c) by Matthias Hertel, https://www.mathertel.de.
+ * This work is licensed under a BSD 3-Clause style license, see https://www.mathertel.de/License.aspx
+ *
+ * @brief Receive codes from a temperature and humidity sensor.
+ * This file is part of the RFCodes library that implements receiving an sending RF and IR protocols.
+ *
+ * This example shows how to use a 433 MHz receiver to get and decode a protocol from a temperature and humidity sensor.
+ * For more details see cresta_protocol.md in the docu folder.
+ * 
+ * Wiring (ESP8266):
+ * * a receiver can be attached with data to pin D5.
 
-  13.05.2020 created from receiver.ino
-*/
+ * * 13.05.2020 created from receiver.ino
+ */
 
 #include <Arduino.h>
 #include <SignalCollector.h>
-#include <cresta.h>
+#include <SignalParser.h>
+
+#include <protocols.h>
 
 SignalParser sig;
-TabRFClass tabRF;
+SignalCollector col;
 
 // ===== Cresta protocol decoding =====
 
@@ -20,7 +33,7 @@ TabRFClass tabRF;
 void cresta_decode(const char *p)
 {
   uint8_t cresta_data[10]; // our device emits 10+2 data bytes, we only read the 10 and ignore the checksum
-  int cresta_cnt = 0; // number of received bytes
+  int cresta_cnt = 0;      // number of received bytes
 
   uint8_t cresta_byte = 0; // currenty byte value fom the stream
   uint8_t cresta_bits = 0; // next bit to receive. 0..7, 8 is the 0-bit used inbetween data baytes
@@ -73,11 +86,9 @@ void cresta_decode(const char *p)
 
 
 // This function will be called when a complete protcol was received.
-void receiveCode(char *proto)
+void receiveCode(const char *proto)
 {
-  SignalParser::CodeTime lastProbes[152]; // dividable by 8 is preferred.
-  // remember last code in a local variable
-  Serial.printf("[%s]\n", proto);
+  Serial.printf("received [%s]\n", proto);
 
   if (strncmp(proto, "cw ", 3) == 0) {
     cresta_decode(proto + 4);
@@ -88,16 +99,18 @@ void receiveCode(char *proto)
 void setup()
 {
   Serial.begin(115200);
-  Serial.println("Cresta Protocol Receiver");
+  Serial.println("Cresta Protocol Receiver Example");
   Serial.println();
 
-  // initialize the tabRF library with ESP8266 pin D7 for receiving
-  tabRF.init(&sig, D7, NO_PIN, 16); // input at pin D7, no output
+    // load the protocol into the SignalParser
+  sig.load(&RFCodes::cw);
 
-  // register the cresta protocol
-  register_cresta(sig);
-
+  // show all defined protocols
   sig.dumpTable();
+
+  // initialize the SignalCollector library
+  col.init(&sig, D5, NO_PIN); // input at pin D5, no output
+
   sig.attachCallback(receiveCode);
 } // setup()
 
@@ -105,7 +118,7 @@ void setup()
 void loop()
 {
   // process received bytes
-  tabRF.loop();
+  col.loop();
 } // loop()
 
 // End.

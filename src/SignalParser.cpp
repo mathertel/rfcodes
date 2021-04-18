@@ -27,16 +27,14 @@
 /** find protocol by name */
 SignalParser::Protocol *SignalParser::_findProt(char *name)
 {
-  Protocol *p = _protocol;
-  int cnt = _protocolCount;
+  Protocol *p = nullptr;
 
-  while (cnt > 0) {
+  for (int n = 0; n < _protocolCount; n++) {
+    p = _protocol[n];
     if (strcmp(name, p->name) == 0)
       break;
-    p++;
-    cnt--;
   }
-  return (cnt ? p : nullptr);
+  return (p);
 } // _findProt()
 
 
@@ -219,15 +217,8 @@ void SignalParser::parse(CodeTime duration)
 {
   TRACE_MSG("(%d)", duration);
 
-  Protocol *p = _protocol;
-  int pLen = _protocolCount;
-
-  // search for all codes for a possible match at the end of the sequence
-  // try every protocol independently
-  while (p && pLen) {
-    _parseProtocol(p, duration);
-    p++;
-    pLen--;
+  for (int n = 0; n < _protocolCount; n++) {
+    _parseProtocol(_protocol[n], duration);
   }
 } // parse()
 
@@ -272,33 +263,36 @@ void SignalParser::compose(const char *sequence, CodeTime *timings, int len)
 } // compose()
 
 /** Load a protocol to be used. */
-int SignalParser::load(Protocol *protocol)
+void SignalParser::load(Protocol *protocol)
 {
   if (protocol) {
     TRACE_MSG("loading protocol %s", protocol->name);
 
     // get space for protocol definition
-    _protocolCount += 1;
-    _protocol = (Protocol *)realloc(_protocol,
-                                    _protocolCount * sizeof(struct Protocol));
+    if (_protocolCount >= _protocolAlloc) {
+      _protocolAlloc += 8;
+      TRACE_MSG("alloc %d", _protocolAlloc);
+      _protocol = (Protocol **)realloc(_protocol, _protocolAlloc * sizeof(Protocol *));
+    }
 
     // fill last one.
-    Protocol *p = &_protocol[_protocolCount - 1];
-    memcpy(p, protocol, sizeof(Protocol));
+    _protocol[_protocolCount] = protocol;
+    TRACE_MSG("_p[%d]=%08x", _protocolCount, protocol);
+    _protocolCount += 1;
 
-    CodeTime baseTime = p->baseTime;
+    CodeTime baseTime = protocol->baseTime;
 
     // calc min and max and codesLength
     int cl = 0;
-    while ((cl < MAX_CODELENGTH) && (p->codes[cl].name)) {
-      Code *c = &(p->codes[cl]);
+    while ((cl < MAX_CODELENGTH) && (protocol->codes[cl].name)) {
+      Code *c = &(protocol->codes[cl]);
 
       // calculate # of durations and absolute timing boundaries
       int tl = 0;
       while ((tl < MAX_TIMELENGTH) && (c->time[tl])) {
         CodeTime t = baseTime * c->time[tl];
-        int radius = (t * p->tolerance) / 100;
-        TRACE_MSG("== %d %d %d %d ", baseTime, c->time[i], t, radius);
+        int radius = (t * protocol->tolerance) / 100;
+        TRACE_MSG("== %d %d %d %d ", baseTime, c->time[tl], t, radius);
 
         c->minTime[tl] = t - radius;
         c->maxTime[tl] = t + radius;
@@ -307,27 +301,16 @@ int SignalParser::load(Protocol *protocol)
       c->timeLength = tl;
 
       cl++;
-    }                   // while
-    p->codeLength = cl; // no need to specify codeLength
+    }                          // while
+    protocol->codeLength = cl; // no need to specify codeLength
 
-    // delete:
-    // for (int codeCount = 0; codeCount < p->codeLength; codeCount++) {
-    //   Code *c = p->codes + codeCount;
+    _resetProtocol(protocol);
 
-    //   // calculate absolute timing boundaries
-    //   for (int i = 0; i < c->timeLength; i++) {
-    //     CodeTime t = baseTime * c->time[i];
-    //     int radius = (t * p->tolerance) / 100;
-    //     TRACE_MSG("== %d %d %d %d ", baseTime, c->time[i], t, radius);
+    for (int n = 0; n < _protocolCount; n++) {
+      TRACE_MSG(" reg[%d] = %08x", n, _protocol[n]);
+    } // for
 
-    //     c->minTime[i] = t - radius;
-    //     c->maxTime[i] = t + radius;
-    //   } // for
-    // }   // for
 
-    _resetProtocol(p);
-
-    return (_protocolCount);
   } // if
 } // load()
 

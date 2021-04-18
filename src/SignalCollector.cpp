@@ -27,7 +27,6 @@ void SignalCollector::init(SignalParser *sig, int recvPin, int sendPin, int trim
   TRACE_MSG("Initalizing tabRF hardware\n");
 
   _sig = sig;
-  _trim = trim;
 
   // Receiving mode
   _recvPin = recvPin;
@@ -70,38 +69,45 @@ void strcpyProtname(char *target, const char *signal)
 
 void SignalCollector::send(const char *signal)
 {
-  SignalParser::CodeTime timings[MAX_TIMING_LENGTH];
+  SignalParser::CodeTime timings[256];
   int level = LOW; // LOW level before starting.
-  INFO_MSG("send(%s)", signal);
+  // INFO_MSG("send(%s)", signal);
 
   char protname[PROTNAME_LEN];
   strcpyProtname(protname, (char *)signal);
-  INFO_MSG("send prot %s", protname);
+  // INFO_MSG("send prot %s", protname);
 
   int repeat = _sig->getSendRepeat(protname);
-  INFO_MSG("send repeat %d", repeat);
+  // INFO_MSG("send repeat %d", repeat);
 
   if ((repeat) && (_sendPin >= 0)) {
-    if (_recvPin >= 0)
-      detachInterrupt(_irNumber);
-
     // get timings of the code
-    _sig->compose(signal, timings, sizeof(timings));
+    _sig->compose(signal, timings, sizeof(timings) / sizeof(SignalParser::CodeTime));
     // dumpTimings(timings);
 
     while (repeat) {
       SignalParser::CodeTime *t = timings;
+
+      if (_recvPin >= 0) {
+        noInterrupts();
+      }
 
       while (*t) {
         level = !level;
         digitalWrite(_sendPin, level);
         delayMicroseconds(*t++);
       } // while
+
+      if (_recvPin >= 0) {
+        interrupts();
+      }
+
       repeat--;
     } // while
+    
+    // never leave active after sending.
+    digitalWrite(_sendPin, LOW);
 
-    if (_recvPin >= 0)
-      attachInterrupt(_irNumber, signal_change_handler, CHANGE);
   } // if
 } // send()
 
@@ -179,13 +185,13 @@ void ICACHE_RAM_ATTR SignalCollector::signal_change_handler()
   unsigned long now = micros();
   SignalParser::CodeTime t = (SignalParser::CodeTime)(now - SignalCollector::lastTime);
 
-  // adjust the timing with the trim factor.
-  int level = digitalRead(_recvPin);
-  if (level) {
-    t += SignalCollector::_trim; // end of low
-  } else {
-    t -= SignalCollector::_trim; // end of high
-  }
+  // // adjust the timing with the trim factor.
+  // int level = digitalRead(_recvPin);
+  // if (level) {
+  //   t += SignalCollector::_trim; // end of low
+  // } else {
+  //   t -= SignalCollector::_trim; // end of high
+  // }
 
   // write to ring buffer
   if (SignalCollector::buf88_cnt < SC_BUFFERSIZE) {
@@ -219,7 +225,6 @@ void SignalCollector::injectTiming(SignalParser::CodeTime t)
 
 
 int SignalCollector::_recvPin = -1;
-int SignalCollector::_trim = 0;
 
 // allocate and initialize the static class members.
 

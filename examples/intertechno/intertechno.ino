@@ -1,29 +1,24 @@
 /**
- * @file: intertechno.ino
+ * @file intertechno.ino
  * 
- * This file is part of the RFCodes library that implements receiving an sending
- * RF and IR protocols.
- * 
+ * @author Matthias Hertel (https://www.mathertel.de)
  * @copyright Copyright (c) by Matthias Hertel, https://www.mathertel.de.
+ * This work is licensed under a BSD 3-Clause style license, see https://www.mathertel.de/License.aspx
+
+ * @brief Receive and send codes using intertechno protocols.
+ * This file is part of the RFCodes library that implements receiving an sending RF and IR protocols.
  *
- * This work is licensed under a BSD 3-Clause style license,
- * https://www.mathertel.de/License.aspx.
- * 
- * @brief
- *
- * This example is showing how to receive and send codes from the intertechno devices.
+ * This example shows how to receive and send codes from the intertechno devices.
  * The 2 different protocols used by this vendor can be decoded with the same receiver
  * by registering the 2 protocols.
  *
- * 2 codes are defined and can be sent out.
+ * Some codes are defined in this sketch and can be sent out.
  *
- * Wiring:
- *  * a receiver can be attached with data to pin D5.
- *  * a transmitter can be attached with data to pin D6.
+ * Wiring (ESP8266):
+ * * a receiver can be attached with data to pin D5.
+ * * a transmitter can be attached with data to pin D6.
  *
  * Use the Serial Monitor to see the received codes and send the predefined codes.
- *
- * More info at: http://www.mathertel.de/Arduino/
 */
 
 #include <Arduino.h>
@@ -102,8 +97,7 @@ void cresta_decode(const char *p)
 void receiveCode(const char *proto)
 {
   SignalParser::CodeTime lastProbes[120 + 1]; // dividable by 8 is preferred.
-  // remember last code in a local variable
-  Serial.printf("[%s]\n", proto);
+  Serial.printf("received [%s]\n", proto);
 
   // analysing supporting callback
   if (showRaw) {
@@ -143,10 +137,10 @@ void setup()
       "Commands: 1-2(Send Code) D(ump Code Table) R(aw toggle)");
 
   // load the protocols into the SignalParser
-  sig.load(&it1);
-  sig.load(&it2);
-  sig.load(&sc5);
-  sig.load(&cw);
+  sig.load(&RFCodes::it1);
+  sig.load(&RFCodes::it2);
+  sig.load(&RFCodes::sc5);
+  sig.load(&RFCodes::cw);
 
   // show all defined protocols
   sig.dumpTable();
@@ -165,6 +159,8 @@ void setup()
 
 #define C1 "it2 s_##___#____#_#__###_____#__#_#__x"
 #define C2 "it2 s_##___#____#_#__###_____#____#__x"
+#define C3 "it1 B111101111000"
+#define C4 "it1 B111101111001"
 
 void loop()
 {
@@ -180,6 +176,14 @@ void loop()
     } else if (cmd == '2') {
       Serial.println("Sending (C2)...");
       col.send(C2);
+
+    } else if (cmd == '3') {
+      Serial.println("Sending (C3)...");
+      col.send(C3);
+
+    } else if (cmd == '4') {
+      Serial.println("Sending (C4)...");
+      col.send(C3);
 
     } else if (cmd == 'R') {
       showRaw = !showRaw;
