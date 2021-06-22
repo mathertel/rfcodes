@@ -31,13 +31,16 @@ jobs:
 
       # Runs Arduino Compiler
       # see https://github.com/arduino/compile-sketches
-      - uses: arduino/compile-sketches@v1
+      #see https://github.com/arduino-libraries/Arduino_ConnectionHandler/blob/master/.github/workflows/compile-examples.yml      
+      - name: Compile examples
+        uses: arduino/compile-sketches@v1
         with:
-          fqbn: 'esp8266:esp8266:nodemcuv2'
           verbose: true
-          platforms: |
-            name: 'esp8266:esp8266:nodemcuv2'
-            source-url: 'https://arduino.esp8266.com/stable/package_esp8266com_index.json'
-          libraries: |
-            - source-path: ./
-
+          platforms: esp8266:esp8266
+          fqbn: esp8266:esp8266:huzzah # esp8266:esp8266:nodemcuv2
+          # libraries: ${{ env.LIBRARIES }}
+          # size-report-sketch: 'ConnectionHandlerDemo'
+          # enable-size-deltas-report: 'true'
+          # sketches-report-path: ${{ env.SKETCHES_REPORTS_PATH }}
+          source-url: https://arduino.esp8266.com/stable/package_esp8266com_index.json
+          version: 3.0.0
