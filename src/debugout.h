@@ -18,13 +18,25 @@
 #define TRACE_MSG(...) { DEBUG_ESP_PORT.printf(__VA_ARGS__); DEBUG_ESP_PORT.println(); }
 #define RAW_MSG(...)   { DEBUG_ESP_PORT.printf(__VA_ARGS__); }
 
+#elif defined(ARDUINO_ARCH_AVR)
+#define ERROR_MSG(fmt, ...)
+#define INFO_MSG(fmt, ...)
+#define TRACE_MSG(fmt, ...)
+#define RAW_MSG(...)
+
 #else
-#include <cstdio>
-// stdout version
-#define ERROR_MSG(fmt, ...) fprintf(stderr, "[error] " fmt "\n", __VA_ARGS__);
-#define INFO_MSG(fmt, ...) fprintf(stderr, "[info]  " fmt "\n", __VA_ARGS__);
-#define TRACE_MSG(fmt, ...) fprintf(stderr, "[trace] " fmt "\n", __VA_ARGS__);
-#define RAW_MSG(...)   fprintf(stderr, __VA_ARGS__);
+#define ERROR_MSG(fmt, ...)
+#define INFO_MSG(fmt, ...)
+#define TRACE_MSG(fmt, ...)
+#define RAW_MSG(...)
+
+// #include <cstdio>
+// // stdout version
+// #define ERROR_MSG(fmt, ...) fprintf(stderr, "[error] " fmt "\n", __VA_ARGS__);
+// #define INFO_MSG(fmt, ...) fprintf(stderr, "[info]  " fmt "\n", __VA_ARGS__);
+// #define TRACE_MSG(fmt, ...) fprintf(stderr, "[trace] " fmt "\n", __VA_ARGS__);
+// #define RAW_MSG(...)   fprintf(stderr, __VA_ARGS__);
+
 #endif
 
 #undef TRACE_MSG

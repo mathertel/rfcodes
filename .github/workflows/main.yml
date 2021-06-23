@@ -41,7 +41,7 @@ jobs:
             - name: esp8266:esp8266
               source-url: https://arduino.esp8266.com/stable/package_esp8266com_index.json
               version: 3.0.0
-          fqbn: esp8266:esp8266:huzzah # esp8266:esp8266:nodemcuv2
+          fqbn: esp8266:esp8266:nodemcuv2
           # libraries: ${{ env.LIBRARIES }}
           # size-report-sketch: 'ConnectionHandlerDemo'
           # enable-size-deltas-report: 'true'

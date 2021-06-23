@@ -180,7 +180,7 @@ void SignalCollector::dumpTimings(SignalParser::CodeTime *raw)
 // static class stuff, to be accessible to the Interrupt service routines.
 
 // This handler is attached to the change interrupt.
-void ICACHE_RAM_ATTR SignalCollector::signal_change_handler()
+void IRAM_ATTR SignalCollector::signal_change_handler()
 {
   unsigned long now = micros();
   SignalParser::CodeTime t = (SignalParser::CodeTime)(now - SignalCollector::lastTime);

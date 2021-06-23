@@ -40,7 +40,7 @@ static volatile unsigned int buf88_cnt; // number of bytes in buffer
 
 
 // This handler is attached to the change interrupt.
-void ICACHE_RAM_ATTR handleInterrupt()
+void IRAM_ATTR handleInterrupt()
 {
   unsigned long now = micros();
   CodeTime t = (CodeTime)(now - lastTime);

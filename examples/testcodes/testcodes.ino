@@ -138,10 +138,10 @@ void setup()
   col.init(&sig, NO_PIN, NO_PIN); // no pins. for testing purpose.
 
   // load all codes that may be detected in the test data
-  sig.load(&it1);
-  sig.load(&it2);
-  sig.load(&sc5);
-  sig.load(&cw);
+  sig.load(&RFCodes::it1);
+  sig.load(&RFCodes::it2);
+  sig.load(&RFCodes::sc5);
+  sig.load(&RFCodes::cw);
 
   // show loaded protocols
   sig.dumpTable();

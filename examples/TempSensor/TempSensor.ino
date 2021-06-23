@@ -67,7 +67,9 @@ void cresta_decode(const char *p)
   // print received data
   Serial.print("data:");
   for (int i = 0; i < 7; i++) {
-    Serial.printf("%02x ", cresta_data[i]);
+    if (cresta_data[i] < 16) Serial.print("0");
+    Serial.print(cresta_data[i], 16);
+    Serial.print(" ");
   } // for
   Serial.println();
 
@@ -76,11 +78,17 @@ void cresta_decode(const char *p)
   } else {
     // temperature
     int temp = 100 * (cresta_data[5] & 0x0f) + 10 * (cresta_data[4] >> 4) + (cresta_data[4] & 0x0f);
-    Serial.printf("  temp: %d.%d °C\n", temp / 10, temp % 10);
+    Serial.print("  temp: ");
+    Serial.print(temp / 10);
+    Serial.print('.');
+    Serial.print(temp % 10);
+    Serial.println(" °C");
 
     // humidity
     int hum = 10 * (cresta_data[6] >> 4) + (cresta_data[6] & 0x0f);
-    Serial.printf("  hum : %d %%\n", hum);
+    Serial.print("   hum: ");
+    Serial.print(hum);
+    Serial.println(" %");
   }
 } // cresta_decode
 
@@ -88,7 +96,9 @@ void cresta_decode(const char *p)
 // This function will be called when a complete protcol was received.
 void receiveCode(const char *proto)
 {
-  Serial.printf("received [%s]\n", proto);
+  Serial.print("received [");
+  Serial.print(proto);
+  Serial.println("]");
 
   if (strncmp(proto, "cw ", 3) == 0) {
     cresta_decode(proto + 4);

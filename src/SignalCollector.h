@@ -25,11 +25,6 @@
 #define NUL '\0'
 #define null 0
 
-// Interrupt service routine must reside in RAM in ESP8266
-#ifndef ICACHE_RAM_ATTR
-#define ICACHE_RAM_ATTR
-#endif
-
 #define NO_PIN (-1)
 
 #define TabRF_ERR(...) Serial.printf("Error: " __VA_ARGS__)
@@ -106,7 +101,7 @@ private:
   // ===== Interrupt service routine =====
 
   // This handler is attached to the change interrupt.
-  static void ICACHE_RAM_ATTR signal_change_handler();
+  static void IRAM_ATTR signal_change_handler();
 
 }; // class SignalCollector
 
