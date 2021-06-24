@@ -7,12 +7,22 @@ The following examples are provided:
 This example shows how to receive and send the protocols used by the intertechno devices.
 Here 2 different protocols can be decoded using the same receiver.
 
+
 ## TempSensor
 
-This example is part of the TabRF library showing how to receive temperature+humidity from a cresta based sensor.
+This example is part of the RFCodes library showing how to receive temperature+humidity from a cresta based sensor.
 The protocol used can transport data and is using manchester coding.
 
 See [Cresta protocol](../docs/cresta_protocol.md) for more details.
+
+
+## necIR
+
+This example is part of the RFCodes library showing how to receive IR protocols that are very similar to the
+RF protocols regarding the timings of the signals.
+The nec protocol uses a specific start sequence and shorter sequences for 0 and 1 bits.
+
+See <https://www.sbprojects.net/knowledge/ir/nec.php> for more details.
 
 
 ## Scanner

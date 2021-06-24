@@ -15,7 +15,7 @@
 
 #include <Arduino.h>
 #include <SignalCollector.h>
-#include <nec_ir_protocol.h>
+#include <ircodes.h>
 
 #include <SignalParser.h>
 
@@ -23,15 +23,10 @@
 bool showRaw = false;
 
 SignalParser sig;
-TabRFClass tabRF;
-
-// ===== Cresta protocol decoding =====
-
-// This function can be used to decode the Cresta Manchester protocol.
-// See cresta.h for further details.
+SignalCollector tabRF;
 
 // This function will be called when a complete protcol was received.
-void receiveCode(char *proto)
+void receiveCode(const char *proto)
 {
   SignalParser::CodeTime lastProbes[152]; // dividable by 8 is preferred.
   // remember last code in a local variable
@@ -58,24 +53,20 @@ void receiveCode(char *proto)
     } // while
     Serial.println();
   } // if
-
-  if (strncmp(proto, "cw ", 3) == 0) {
-    cresta_decode(proto + 4);
-  }
 } // receiveCode()
 
 void setup()
 {
+  delay(2000);
   Serial.begin(115200);
   Serial.println("necIR Packet Receiver");
-  delay(2000);
   Serial.println();
 
   // initialize the tabRF library
   tabRF.init(&sig, D7, NO_PIN, 16); // input at pin D7, no output
 
-  register_nec_ir(sig);
 
+  sig.load(&IRCodes::nec);
   sig.dumpTable();
 
   if (showRaw)

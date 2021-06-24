@@ -52,6 +52,19 @@ The modules I used and found reliable are the type RXB8 and RXB12, both with a c
 
 The sender modules must produce a carrier frequency on HIGH output. When not transmitting a code the output is LOW so other devices can use the carrier frequency on their own. I used several modules all with ceramic resonators (no adjustable air coils). They seem to be less critical.
 
+## Examples
+
+The following examples sketches are available:
+
+* The [Intertechno](./examples/intertechno/README.md) example shows how to register and use
+    the 2 protocols used by devices from intertechno.
+
+* The [TempSensor](./examples/TempSensor/README.md) example shows how to receive temperature+humidity from a cresta protoco based sensor.
+
+* The [necIR](./examples/necIR/README.md) example shows how to receive and send the Infrared NEC protocol.
+
+* The [Scanner](./examples/scanner/README.md) example ... ???
+
 
 ## Protocol definitions
 

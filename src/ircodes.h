@@ -5,7 +5,7 @@
 
 
 // typical recording: [nec N00000000 11110111 11010000 00101111]
-// 9193,4530, 
+// 9193,4530,
 // 632,520,595,556,605,519,631,522,592,560,600,523,630,520,593,556,
 // 602,1670,593,1675,633,1665,604,1666,595,555,570,1700,593,1674,597,1699,
 // 569,1700,592,1675,598,554,591,1674,598,553,592,558,569,553,596,554,
@@ -26,43 +26,41 @@
 // 1668,595,1676,631,1670,603,520,632,1670,601,522,631,521,593,558,602,524,628,522,595,556,604,1668,593,559,604,1668,594,1678,630,1669,604,
 
 
-#ifndef SignalParser_NEC_IR_H_
-#define SignalParser_NEC_IR_H_
+#ifndef SignalParser_IRCODES_H_
+#define SignalParser_IRCODES_H_
 
 #include "SignalParser.h"
 
+/** namespace for defining codes for the Arduino RFCodes library. */
+namespace IRCodes
+{
 
-/** register the "older" intertechno protocol */
-void register_nec_ir(SignalParser &sig) {
-  // this protocol has a fixed length of 12 codes
-  uint8_t prot = sig.newProtocol("nec", 1, 1 + 32, 20);
+// Definition of the IR protocol used / defined by nec.
+// Timings from // https://www.sbprojects.net/knowledge/ir/nec.php
 
-  uint32_t t = 560; 
+SignalParser::Protocol nec = {
+    "nec",
+    .minCodeLen = 1,
+    .maxCodeLen = 1 + 32,
 
-  // starting sequence is /‾\___(long)_______/
-  sig.newCode(prot, 'N', SP_START, 9000, 4500);
+    .tolerance = 20,
+    .sendRepeat = 4,
+    .baseTime = 560,
+    .codes = {
+        // starting sequence is /‾‾(9000)‾‾\__(4500)__/
+        {SignalParser::CodeType::START, 'N', {16, 8}},
 
-  // low signal is /‾\_/
-  sig.newCode(prot, '0', SP_DATA, t, t);
+        // low signal is /‾\_/
+        {SignalParser::CodeType::DATA, '0', {1, 1}},
 
-  // high signal is /‾\___/
-  sig.newCode(prot, '1', SP_DATA, t, 3 * t);
+        // high signal is /‾\___/
+        {SignalParser::CodeType::DATA, '1', {1, 3}},
 
-  // Repeat signal is /‾\___/
-  sig.newCode(prot, 'R', SP_START | SP_END, 9000, 2250, t);
+        // Repeat signal is /‾‾(9000)‾‾\__(2250)__/
+        {SignalParser::CodeType::DATA, 'R', {16, 4}}}};
 
+} // namespace IRCodes
 
-
-  // this protocol has a fixed length of 12 codes
-  prot = sig.newProtocol("necR", 1, 1, 20);
-
-  t = 560;
-
-  // Repeat signal is /‾\___/
-  sig.newCode(prot, 'X', SP_START | SP_END, 9000, 2250, t);
-
-}  // register_nec_ir()
-
-#endif  // SignalParser_NEC_IR_H_
+#endif // SignalParser_IRCODES_H_
 
 // End.
