@@ -1,5 +1,5 @@
 /**
- * @file: rfcodes.h
+ * @file: RFCodes.h
  * This file is part of the RFCodes library that implements receiving an sending
  * RF and IR protocols.
  *

@@ -22,10 +22,7 @@
 */
 
 #include <Arduino.h>
-#include <SignalCollector.h>
-#include <SignalParser.h>
-
-#include <protocols.h>
+#include <RFCodes.h>
 
 bool showRaw = false;
 
