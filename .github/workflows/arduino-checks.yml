@@ -13,11 +13,6 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
-
   # This defines a job for checking the Arduino library format specifications
   # see <https://github.com/marketplace/actions/arduino-arduino-lint-action>
   lint:
@@ -68,3 +63,21 @@ jobs:
           # size-report-sketch: 'ConnectionHandlerDemo'
           # enable-size-deltas-report: 'true'
           # sketches-report-path: ${{ env.SKETCHES_REPORTS_PATH }}
+
+  compile-uno:
+    name: compile uno examples
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v2
+
+      # Compile Examples for UNO
+      - name: Compile examples on uno
+        uses: arduino/compile-sketches@v1
+        with:
+          verbose: true
+          fqbn: arduino:avr:uno
+          sketch-paths: |
+            - 'examples/intertechno'
+
