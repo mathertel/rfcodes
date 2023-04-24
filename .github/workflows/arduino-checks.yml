@@ -33,7 +33,7 @@ jobs:
   # These jobs are used to compile the examples fot the specific processor/board.
   # see <https://github.com/marketplace/actions/compile-arduino-sketches>
   compile-esp8266:
-    name: compile uno examples
+    name: compile esp8266 examples
     runs-on: ubuntu-latest
     continue-on-error: true
 
@@ -43,7 +43,7 @@ jobs:
       # Runs Arduino Compiler
       # see https://github.com/arduino/compile-sketches
       #see https://github.com/arduino-libraries/Arduino_ConnectionHandler/blob/master/.github/workflows/compile-examples.yml      
-      - name: Compile examples
+      - name: compile examples
         uses: arduino/compile-sketches@v1
         with:
           verbose: true
@@ -64,20 +64,20 @@ jobs:
           # enable-size-deltas-report: 'true'
           # sketches-report-path: ${{ env.SKETCHES_REPORTS_PATH }}
 
-  compile-uno:
-    name: compile uno examples
-    runs-on: ubuntu-latest
-    continue-on-error: true
+  # compile-uno:
+  #   name: compile uno examples
+  #   runs-on: ubuntu-latest
+  #   continue-on-error: true
 
-    steps:
-      - uses: actions/checkout@v2
+  #   steps:
+  #     - uses: actions/checkout@v2
 
-      # Compile Examples for UNO
-      - name: Compile examples on uno
-        uses: arduino/compile-sketches@v1
-        with:
-          verbose: true
-          fqbn: arduino:avr:uno
-          sketch-paths: |
-            - 'examples/intertechno'
+  #     # Compile Examples for UNO
+  #     - name: compile examples
+  #       uses: arduino/compile-sketches@v1
+  #       with:
+  #         verbose: true
+  #         fqbn: arduino:avr:uno
+  #         sketch-paths: |
+  #           - 'examples/intertechno'
 

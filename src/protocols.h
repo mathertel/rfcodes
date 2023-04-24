@@ -63,6 +63,22 @@ SignalParser::Protocol sc5 = {
         {SignalParser::CodeType::END, 'S', {4, 124}}}};
 
 
+/** Definition of the protocol from SC5272 and similar chips with 32 - 46 data bits data */
+SignalParser::Protocol ev1527 = {
+    "ev1527",
+    .minCodeLen = 1 + 20 + 4,
+    .maxCodeLen = 1 + 20 + 4,
+
+    .tolerance = 25,
+    .sendRepeat = 3,
+    .baseTime = 320,
+    .codes = {
+        {SignalParser::CodeType::START, 's', {1, 31}},
+        {SignalParser::CodeType::DATA, '0', {1, 3}},
+        {SignalParser::CodeType::DATA, '1', {3, 1}}
+      }};
+
+
 /** register the cresta protocol with a length of 59 codes; used for sensor data transmissions.
  * See /docs/cresta_protocol.h */
 SignalParser::Protocol cw = {

@@ -1,3 +1,23 @@
+/**
+ * @file: scanner.ino
+ * 
+ * This file is part of the RFCodes library that implements receiving an sending
+ * RF and IR protocols.
+ * 
+ * @copyright Copyright (c) by Matthias Hertel, https://www.mathertel.de.
+ *
+ * This work is licensed under a BSD 3-Clause style license,
+ * https://www.mathertel.de/License.aspx.
+ * 
+ * @brief
+ *
+ * This sample is part of the RFCodes library.
+ * It can be used to collect some probes from a specific sender where you don't know the exact timings.
+ *
+ * More info at: http://www.mathertel.de/Arduino/
+ * 
+ * * 31.03.2022 created by Matthias Hertel
+*/
 
 #include <Arduino.h>
 

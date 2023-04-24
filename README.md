@@ -9,7 +9,6 @@ Each protocol often defined by a device manufacturer or a chip producing company
 There is a textual representation for sending and receiving a sequence by specifying the short name of the protocol and the characters specifying the code. For some protocols there is an algorithm defined that compiles the characters into a real value.
 So any code sequence corresponds to a textual representation like `it2 s_##___#____#_#__###_____#__#____x`
 
-
 ## Use the library
 
 Using the library requires the following steps:
@@ -24,7 +23,6 @@ Some microprocessors support only specific pins with interrupts
 so please look up the documentation for **Arduino attachInterrupt()** function for the processor.
 
 Sending a protocol uses no interrupts but also should not be interrupted by another ISR routine.
-
 
 ## The Wiring
 
@@ -65,7 +63,6 @@ The following examples sketches are available:
 
 * The [Scanner](./examples/scanner/README.md) example ... ???
 
-
 ## Protocol definitions
 
 Here are some hints on how to configure a protocol:
@@ -85,26 +82,25 @@ In the code definitions the typical timing patterns are defined.
 
 * **type** - The code type defines the role of this code in the sequence.
 
-    * A **start code** is defined to recognize that a protocol is send out as it is sent at the beginning only.
+  * A **start code** is defined to recognize that a protocol is send out as it is sent at the beginning only.
     This can be used to simply wait until such a unique timing can be found. This may be a code with a exceptional duration or a series of durations marking the start of a sequence.
     As the following codes often have shorter timings so a
     short pulse and a long pause is part of many protocols to detect other senders transmitting into the pause. A simple way of collision detection.
 
-    * Multiple **data codes** are defined to represent data bits.
+  * Multiple **data codes** are defined to represent data bits.
     For binary protocols one sequence stays for a set bit and another for a cleared bit but you can find also protocols with 3 data codes. Multiple of these codes in a row can then be used to build the protocol data.
 
-    * A **end code** marks the end of a sequence.
+  * A **end code** marks the end of a sequence.
     This is useful for protocols that have a variable length of data.
     A code defined with the END flag will always stop the current sequence detection. When the minimum length is not yet given the sequence is not taken as a valid code.
 
-    * Codes with a **fixed length** are defined using the minimum and maximum length with the length of the sequence. Do use the END flag only when there is a special code defined marking the end.
+  * Codes with a **fixed length** are defined using the minimum and maximum length with the length of the sequence. Do use the END flag only when there is a special code defined marking the end.
     Some protocols just end after a number of codes.
 
 * **name** - The single character representing a code in the sequence.
-It must be unique within the protocol. 
+It must be unique within the protocol.
 
 * **durations** - The list of durations that represent the code.
-
 
 ### Protocol Example
 
@@ -132,16 +128,14 @@ SignalParser::Protocol sc5 = {
 
 This 3-state protocol is also found using the END code as a start code. When submitting multiple sequences in a row as it is usually done by senders and expected by receivers this protocol is partially equivalent to the `it1` protocol.
 
-
 ## Implementation
 
 There are 2 classes combined here:
 
-
 **SignalParser**
 
 The `SignalParser` is a general usable class that knows all about the timing of codes in the protocol
-and knows how to decode and encode them. 
+and knows how to decode and encode them.
 
 This class can take pulse/gap durations give to the `parse()` method and uses the registered protocol definitions
 to detect a full protocol sequence using valid codes.
@@ -150,7 +144,7 @@ or use the class to test for codes in a given series of durations. (see Example 
 
 Since the solutions of the manufacturers vary quiet a lot this library can be adapted to different protocols by registering the signal patterns of the protocols using the `load` method by passing a Protocol+Codes definition.
 
-Whenever a full sequence is detected from the given durations the callback function is used to pass the sequence over for further processing. 
+Whenever a full sequence is detected from the given durations the callback function is used to pass the sequence over for further processing.
 
 ```CPP
 SignalParser sig;
@@ -165,8 +159,8 @@ sig.attachCallback(receiveCode);
 
 **SignalCollector**
 
-The `SignalCollector` class handles interrupt routines and the IO pins. every time when receiving a signal change
-the duration since the previous change is collected into a buffer.
+The `SignalCollector` class handles interrupt routines and the IO pins.
+Every time when receiving a signal change the duration since the previous change is collected into a buffer.
 
 The loop() function must be called from the main loop function to transfer the durations from the buffer into the parser.
 
@@ -188,4 +182,3 @@ col.send("it2 s_##___#____#_#__###_____#____#__x");
 * [Standard protocols](/docs/SC5272_protocol.md)
 * [intertechno protocols](/docs/intertechno_protocol.md)
 * [Cresta protocol for sensors](/docs/cresta_protocol.md)
-
