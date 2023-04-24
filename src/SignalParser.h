@@ -1,14 +1,14 @@
 /**
  * @file: SignalParser.h
- * 
+ *
  * This file is part of the RFCodes library that implements receiving an sending
  * RF and IR protocols.
- * 
+ *
  * @copyright Copyright (c) by Matthias Hertel, https://www.mathertel.de.
  *
  * This work is licensed under a BSD 3-Clause style license,
  * https://www.mathertel.de/License.aspx.
- * 
+ *
  * @brief
  * This signal parser recognizes patterns in timing code sequences that are
  * defined by declarative tables.
@@ -41,27 +41,26 @@
 
 #define NUL '\0'
 
-#define MAX_TIMELENGTH 8 // maximal length of a code definition
-#define MAX_CODELENGTH 8 // maximal number of code definitions per protocol
+#define MAX_TIMELENGTH 8  // maximal length of a code definition
+#define MAX_CODELENGTH 8  // maximal number of code definitions per protocol
 
-#define MAX_SEQUENCE_LENGTH 120                                  // maximal length of a code sequence
-#define MAX_TIMING_LENGTH (MAX_TIMELENGTH * MAX_SEQUENCE_LENGTH) // maximal number of timings in a sequence
+#define MAX_SEQUENCE_LENGTH 120                                   // maximal length of a code sequence
+#define MAX_TIMING_LENGTH (MAX_TIMELENGTH * MAX_SEQUENCE_LENGTH)  // maximal number of timings in a sequence
 
-#define PROTNAME_LEN 12 // maximal protocol name len including ending '\0'
+#define PROTNAME_LEN 12  // maximal protocol name len including ending '\0'
 
-class SignalParser
-{
+class SignalParser {
 public:
   // ===== Type definitions =====
 
 
   // use-cases of a defined code (start,data,end).
   typedef enum {
-    START = 0x01,             // A valid start code type.
-    DATA = 0x02,              // A code containing some information
-    END = 0x04,               // This code ends a sequence
-    ANYDATA = (START | DATA), // A code with data can be used to start a sequence
-    ANY = (DATA | END)        // A code with data that can end the sequence
+    START = 0x01,              // A valid start code type.
+    DATA = 0x02,               // A code containing some information
+    END = 0x04,                // This code ends a sequence
+    ANYDATA = (START | DATA),  // A code with data can be used to start a sequence
+    ANY = (DATA | END)         // A code with data that can end the sequence
   } CodeType;
 
   // timings are using CodeTime datatypes meaning µsecs.
@@ -70,21 +69,23 @@ public:
   // The Code structure is used to hold a specific timing sequence used in the protocol.
   // This Structure includes also the current state information while receiving the code.
   struct Code {
-    CodeType type; // type of usage of code
-    char name;     // single character name for this code used for the message string.
+    CodeType type;  // type of usage of code
+    char name;      // single character name for this code used for the message string.
 
-    CodeTime time[MAX_TIMELENGTH]; // ideal time of the code part.
+    CodeTime time[MAX_TIMELENGTH];  // ideal time of the code part.
 
     // These members will be calculated:
 
-    int timeLength;                   // number of timings for this code
-    CodeTime minTime[MAX_TIMELENGTH]; // average time of the code part.
-    CodeTime maxTime[MAX_TIMELENGTH]; // average time of the code part.
+    int timeLength;  // number of timings for this code
+    CodeTime total;       // total time in this code
+
+    CodeTime minTime[MAX_TIMELENGTH];  // average time of the code part.
+    CodeTime maxTime[MAX_TIMELENGTH];  // average time of the code part.
 
     // these fields reflect the current status of the code.
-    int cnt;    // number of discovered timings.
-    bool valid; // is true while discovering and the code is still possible.
-  };            // struct Code
+    int cnt;     // number of discovered timings.
+    bool valid;  // is true while discovering and the code is still possible.
+  };             // struct Code
 
 
   // The Protocol structure is used to hold the basic settings for a protocol.
@@ -107,6 +108,7 @@ public:
     unsigned int sendRepeat;
 
     CodeTime baseTime;
+    CodeTime realBase;
 
     Code codes[MAX_CODELENGTH];
 
@@ -116,7 +118,7 @@ public:
     int codeLength;
     char seq[MAX_SEQUENCE_LENGTH];
     int seqLen;
-  }; // struct Protocol
+  };  // struct Protocol
 
 
   // Callback when a code sequence was detected.
@@ -153,6 +155,10 @@ private:
   /** check if the duration fits for the protocol */
   void _parseProtocol(Protocol *p, CodeTime duration);
 
+  /** recalculate adjusted timings. */
+  void _recalcProtocol(Protocol *protocol, CodeTime baseTime);
+
+
   // ===== public functions =====
 
 public:
@@ -164,7 +170,7 @@ public:
 
   /** parse a single duration.
    * @param duration check if this duration fits to any definitions.
-  */
+   */
   void parse(CodeTime duration);
 
   /** compose the timings of a sequence by using the code table.
@@ -173,14 +179,12 @@ public:
   void compose(const char *sequence, CodeTime *timings, int len);
 
   /** Load a protocol to be used. */
-  void load(Protocol *protocol);
-
+  void load(Protocol *protocol, CodeTime otherBaseTime = 0);
 
   // ===== debug helpers =====
 
   /** Send a summary of the current code-table to the output. */
-  void dumpProtocol(Protocol *p)
-  {
+  void dumpProtocol(Protocol *p) {
     TRACE_MSG("dump %08x", p);
 
     if (p) {
@@ -197,24 +201,23 @@ public:
 
         for (int n = 0; n < c->timeLength; n++) {
           RAW_MSG("%5d -%5d |", c->minTime[n], c->maxTime[n]);
-        } // for
+        }  // for
         RAW_MSG("\n");
 
         c++;
         cnt--;
-      } // while
+      }  // while
       RAW_MSG("\n");
-    } // if
-  }   // dumpProtocol()
+    }  // if
+  }    // dumpProtocol()
 
   /** Send a summary of the current code-table to the output. */
-  void dumpTable()
-  {
+  void dumpTable() {
     for (int n = 0; n < _protocolCount; n++) {
       Protocol *p = _protocol[n];
       dumpProtocol(p);
-    } // for
-  }   // dumpTable()
-};    // class
+    }  // for
+  }    // dumpTable()
+};     // class
 
-#endif // SignalParser_H_
+#endif  // SignalParser_H_

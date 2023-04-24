@@ -1,18 +1,18 @@
 /**
  * @file SignalParser.cpp
- * 
+ *
  * This file is part of the RFCodes library that implements receiving an sending
  * RF and IR protocols.
- * 
+ *
  * @copyright Copyright (c) by Matthias Hertel, https://www.mathertel.de.
  *
  * This work is licensed under a BSD 3-Clause style license,
  * https://www.mathertel.de/License.aspx.
- * 
+ *
  * @brief
  * This signal parser recognizes patterns in timing code sequences that are
  * defined by declarative tables.
- * 
+ *
  * Change History see SignalParser.h
  */
 
@@ -25,8 +25,7 @@
 
 
 /** find protocol by name */
-SignalParser::Protocol *SignalParser::_findProt(char *name)
-{
+SignalParser::Protocol *SignalParser::_findProt(char *name) {
   Protocol *p = nullptr;
 
   for (int n = 0; n < _protocolCount; n++) {
@@ -35,12 +34,11 @@ SignalParser::Protocol *SignalParser::_findProt(char *name)
       break;
   }
   return (p);
-} // _findProt()
+}  // _findProt()
 
 
 /** find code by name */
-SignalParser::Code *SignalParser::_findCode(Protocol *p, char codeName)
-{
+SignalParser::Code *SignalParser::_findCode(Protocol *p, char codeName) {
   Code *c = p->codes;
   int cnt = p->codeLength;
 
@@ -51,37 +49,36 @@ SignalParser::Code *SignalParser::_findCode(Protocol *p, char codeName)
     cnt--;
   }
   return (cnt ? c : nullptr);
-} // _findCode()
+}  // _findCode()
 
 
 /** reset all codes in a protocol */
-void SignalParser::_resetCodes(Protocol *p)
-{
+void SignalParser::_resetCodes(Protocol *p) {
   Code *c = p->codes;
   int cCnt = p->codeLength;
   while (c && cCnt) {
     c->valid = true;
     c->cnt = 0;
+    c->total = 0;
 
     c++;
     cCnt--;
   }
-} // _resetCodes()
+}  // _resetCodes()
 
 
 /** reset the whole protocol to start capturing from scratch. */
-void SignalParser::_resetProtocol(Protocol *p)
-{
+void SignalParser::_resetProtocol(Protocol *p) {
   TRACE_MSG("  reset prot: %s", p->name);
   p->seqLen = 0;
   p->seq[0] = NUL;
   _resetCodes(p);
-} // _resetProtocol()
+  _recalcProtocol(p, p->baseTime);
+}  // _resetProtocol()
 
 
 /** use the callback function when registered using format <protocolname> <sequence> */
-void SignalParser::_useCallback(Protocol *p)
-{
+void SignalParser::_useCallback(Protocol *p) {
   if (p && _callbackFunc) {
     String code;
     code += p->name;
@@ -89,12 +86,11 @@ void SignalParser::_useCallback(Protocol *p)
     code += p->seq;
     _callbackFunc(code.c_str());
   }
-} // _useCallback()
+}  // _useCallback()
 
 
 /** check if the duration fits for the protocol */
-void SignalParser::_parseProtocol(Protocol *p, CodeTime duration)
-{
+void SignalParser::_parseProtocol(Protocol *p, CodeTime duration) {
   Code *c = p->codes;
   int cCnt = p->codeLength;
   bool anyValid = false;
@@ -106,7 +102,7 @@ void SignalParser::_parseProtocol(Protocol *p, CodeTime duration)
       // check if timing fits into this code
       int8_t i = c->cnt;
       CodeType type = c->type;
-      bool matched = false; // until found that the new duration fits
+      bool matched = false;  // until found that the new duration fits
 
       TRACE_MSG("check: %c", c->name);
 
@@ -129,8 +125,10 @@ void SignalParser::_parseProtocol(Protocol *p, CodeTime duration)
         }
 
       } else {
-        matched = true; // this code matches
-      }                 // if
+        matched = true;  // this code matches
+        c->total += duration;
+
+      }  // if
 
       // write back to code
       c->valid = matched;
@@ -150,11 +148,21 @@ void SignalParser::_parseProtocol(Protocol *p, CodeTime duration)
 
         if (i == c->timeLength) {
           // all timings received so add code-character.
+          if (p->seqLen == 0) {
+            TRACE_MSG("start: %s %d", p->name, c->total);
+            int allTimes = 0;
+            for (int tl = 0; tl < c->timeLength; tl++) {
+              allTimes += c->time[tl];
+            }
+            _recalcProtocol(p, c->total / allTimes);
+          }
+
           p->seq[p->seqLen++] = c->name;
           p->seq[p->seqLen] = NUL;
           // DEBUG_ESP_PORT.print(c->name);
           TRACE_MSG("  add '%s'", p->seq);
-          _resetCodes(p); // reset all codes but not the protocol
+
+          _resetCodes(p);  // reset all codes but not the protocol
 
           if ((type == END) && (p->seqLen < p->minCodeLen)) {
             // End packet found but sequence was not started early enough
@@ -171,10 +179,10 @@ void SignalParser::_parseProtocol(Protocol *p, CodeTime duration)
             _useCallback(p);
             _resetProtocol(p);
           }
-          break; // no more code checking in this protocol
-        }        // if
+          break;  // no more code checking in this protocol
+        }         // if
       }
-    } // if (c->valid)
+    }  // if (c->valid)
 
     if (retryCandidate) {
       // only loop once
@@ -184,28 +192,26 @@ void SignalParser::_parseProtocol(Protocol *p, CodeTime duration)
       c++;
       cCnt--;
     }
-  } // while
+  }  // while
 
   if (!anyValid) {
     TRACE_MSG("  no codes.");
     _resetProtocol(p);
   }
-} // _parseProtocol()
+}  // _parseProtocol()
 
 
 // ===== public functions =====
 
 
 /** attach a callback function that will get passed any new code. */
-void SignalParser::attachCallback(CallbackFunction newFunction)
-{
+void SignalParser::attachCallback(CallbackFunction newFunction) {
   _callbackFunc = newFunction;
-} // attachCallback()
+}  // attachCallback()
 
 
 // return the number of send repeats that should occure.
-int SignalParser::getSendRepeat(char *name)
-{
+int SignalParser::getSendRepeat(char *name) {
   Protocol *p = _findProt(name);
   return (p ? p->sendRepeat : 0);
 }
@@ -213,21 +219,19 @@ int SignalParser::getSendRepeat(char *name)
 /** parse a single duration.
  * @param duration check if this duration fits to any definitions.
  */
-void SignalParser::parse(CodeTime duration)
-{
+void SignalParser::parse(CodeTime duration) {
   TRACE_MSG("(%d)", duration);
 
   for (int n = 0; n < _protocolCount; n++) {
     _parseProtocol(_protocol[n], duration);
   }
-} // parse()
+}  // parse()
 
 
 /** compose the timings of a sequence by using the code table.
  * @param sequence textual representation using "<protocolname> <codes>".
  */
-void SignalParser::compose(const char *sequence, CodeTime *timings, int len)
-{
+void SignalParser::compose(const char *sequence, CodeTime *timings, int len) {
   char protname[PROTNAME_LEN];
 
   char *s = strchr(sequence, ' ');
@@ -244,7 +248,7 @@ void SignalParser::compose(const char *sequence, CodeTime *timings, int len)
     }
     Protocol *p = _findProt(protname);
 
-    s++; // to start of code characters
+    s++;  // to start of code characters
 
     if (p && timings) {
       while (*s && len) {
@@ -252,19 +256,39 @@ void SignalParser::compose(const char *sequence, CodeTime *timings, int len)
         if (c) {
           for (int i = 0; i < c->timeLength; i++) {
             *timings++ = (c->minTime[i] + c->maxTime[i]) / 2;
-          } // for
+          }  // for
         }
         s++;
         len--;
       }
       *timings = 0;
-    } // if
+    }  // if
   }
-} // compose()
+}  // compose()
+
+
+void SignalParser::_recalcProtocol(Protocol *protocol, CodeTime baseTime) {
+  // calc min and max and codesLength
+  if (protocol->baseTime != baseTime) {
+    TRACE_MSG("recalc %d", baseTime);
+  }
+
+  for (int cl = 0; cl < protocol->codeLength; cl++) {
+    Code *c = &(protocol->codes[cl]);
+
+    for (int tl = 0; tl < c->timeLength; tl++) {
+      CodeTime t = baseTime * c->time[tl];
+      int radius = (t * protocol->tolerance) / 100;
+      c->minTime[tl] = t - radius;
+      c->maxTime[tl] = t + radius;
+    }
+  }
+}  // _recalcProtocol()
+
 
 /** Load a protocol to be used. */
-void SignalParser::load(Protocol *protocol)
-{
+// @param otherBaseTime not in use yet.
+void SignalParser::load(Protocol *protocol, CodeTime otherBaseTime) {
   if (protocol) {
     TRACE_MSG("loading protocol %s", protocol->name);
 
@@ -282,36 +306,29 @@ void SignalParser::load(Protocol *protocol)
 
     CodeTime baseTime = protocol->baseTime;
 
-    // calc min and max and codesLength
+    // calc c->timeLength and p->codeLength
     int cl = 0;
     while ((cl < MAX_CODELENGTH) && (protocol->codes[cl].name)) {
       Code *c = &(protocol->codes[cl]);
 
-      // calculate # of durations and absolute timing boundaries
       int tl = 0;
       while ((tl < MAX_TIMELENGTH) && (c->time[tl])) {
-        CodeTime t = baseTime * c->time[tl];
-        int radius = (t * protocol->tolerance) / 100;
-        TRACE_MSG("== %d %d %d %d ", baseTime, c->time[tl], t, radius);
-
-        c->minTime[tl] = t - radius;
-        c->maxTime[tl] = t + radius;
         tl++;
-      } // while
+      }  // while
       c->timeLength = tl;
-
       cl++;
-    }                          // while
-    protocol->codeLength = cl; // no need to specify codeLength
+    }                           // while
+    protocol->codeLength = cl;  // no need to specify codeLength
 
+    _recalcProtocol(protocol, baseTime);
     _resetProtocol(protocol);
 
     for (int n = 0; n < _protocolCount; n++) {
       TRACE_MSG(" reg[%d] = %08x", n, _protocol[n]);
-    } // for
+    }  // for
 
 
-  } // if
-} // load()
+  }  // if
+}  // load()
 
 // End.

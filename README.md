@@ -57,11 +57,12 @@ The following examples sketches are available:
 * The [Intertechno](./examples/intertechno/README.md) example shows how to register and use
     the 2 protocols used by devices from intertechno.
 
-* The [TempSensor](./examples/TempSensor/README.md) example shows how to receive temperature+humidity from a cresta protoco based sensor.
+* The [TempSensor](./examples/TempSensor/README.md) example shows how to receive temperature+humidity
+  from a cresta protocol based sensor.
 
 * The [necIR](./examples/necIR/README.md) example shows how to receive and send the Infrared NEC protocol.
 
-* The [Scanner](./examples/scanner/README.md) example ... ???
+* The [Scanner](./examples/scanner/README.md) example can be used to collect code timings for further analysis.
 
 ## Protocol definitions
 
@@ -180,5 +181,6 @@ col.send("it2 s_##___#____#_#__###_____#____#__x");
 
 * [About RF Protocols](/docs/rf433.md)
 * [Standard protocols](/docs/SC5272_protocol.md)
+* [EV1527 protocol](/docs/ev1527_protocol.md)
 * [intertechno protocols](/docs/intertechno_protocol.md)
 * [Cresta protocol for sensors](/docs/cresta_protocol.md)

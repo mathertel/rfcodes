@@ -63,7 +63,7 @@ SignalParser::Protocol sc5 = {
         {SignalParser::CodeType::END, 'S', {4, 124}}}};
 
 
-/** Definition of the protocol from SC5272 and similar chips with 32 - 46 data bits data */
+/** Definition of the protocol from ev1527 and similar chips with 20 address and 4 data bits. */
 SignalParser::Protocol ev1527 = {
     "ev1527",
     .minCodeLen = 1 + 20 + 4,
